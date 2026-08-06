@@ -71,6 +71,7 @@ b{color:var(--ink);font-weight:620}
 .btn.pri:hover:not(:disabled){background:#4b93e8}
 .btn.sm{padding:7px 12px;font-size:13px}
 .btn.opt{text-align:left;min-width:150px;line-height:1.3}
+.btn.opt.cap{border-color:rgba(217,89,38,.45)}
 .btn.opt.on{background:var(--surface-3);color:var(--ink);border-color:var(--s1);box-shadow:inset 0 -2px 0 var(--s1)}
 .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
 
@@ -199,6 +200,15 @@ th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--hair)}
 th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
 td{color:var(--ink-2)}td:first-child{color:var(--ink)}
 .bars{display:grid;gap:9px;margin-top:4px}
+.caprow{display:grid;grid-template-columns:92px 1fr 78px 1fr;gap:12px;align-items:center;font-size:13px}
+.caprow .cl{color:var(--ink);font-weight:560}
+.caprow .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.caprow .track i{display:block;height:100%;border-radius:5px}
+.caprow .cv{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.caprow .cm{color:var(--muted);font-size:12px}
+.capsum{background:var(--surface-2);border-radius:10px;padding:12px 15px;margin-bottom:14px;font-size:14px;color:var(--ink-2)}
+.capsum.good{border-left:3px solid var(--good)}
+@media(max-width:760px){.caprow{grid-template-columns:80px 1fr 70px}.caprow .cm{display:none}}
 .barrow{display:grid;grid-template-columns:130px 1fr 54px;gap:11px;align-items:center;font-size:13px}
 .barrow .t{color:var(--ink-2)}
 .barrow .track{height:9px;background:var(--axis);border-radius:5px;overflow:hidden}
@@ -237,8 +247,9 @@ ul.bul li{margin:7px 0}
   </div>
   <div class="railfoot">
     <input type="text" id="user" placeholder="chess.com username" spellcheck="false">
-    <button class="btn sm" id="sync">Sync &amp; analyse games</button>
+    <button class="btn sm" id="sync">Analyse my full history</button>
     <div class="syncstat" id="syncStat"></div>
+    <button class="btn sm" id="stopSync" style="display:none">Stop analysing</button>
     <div class="row" style="gap:6px">
       <button class="btn sm" id="exp" style="flex:1">Export</button>
       <button class="btn sm" id="imp" style="flex:1">Import</button>
@@ -372,6 +383,14 @@ ul.bul li{margin:7px 0}
     <h2>Serious errors per game, over time</h2>
     <div id="errChart"><div class="empty">Sync some games first.</div></div>
     <p class="note">One dot per analysed game, oldest on the left. Lower is better. This is measured from your real games, not from drills.</p>
+  </div>
+  <div class="card sect">
+    <h2>You, over time</h2>
+    <p class="note" style="margin:-6px 0 14px">Rated rapid and blitz only — coaching games, bullet and games against your own bots are left out so the months compare fairly.</p>
+    <div id="capsules"></div>
+    <p class="note">Each month you've played enough games in becomes an opponent on the <b>Play</b> tab.
+    Average centipawn loss is how much you gave away per move — lower is better. Play an older version
+    of yourself to see the gap directly.</p>
   </div>
   <div class="card sect">
     <h2>Rating</h2>
@@ -624,6 +643,8 @@ const MOTIF={
 /* ---------- sync + analyse ---------- */
 const logEl=$("#log");
 const log=(s)=>{logEl.innerHTML=s+"<br>"+logEl.innerHTML};
+let STOP=false;
+$("#stopSync").onclick=()=>{STOP=true;stat("stopping…","busy")};
 const stat=(msg,cls)=>{const e=$("#syncStat"); if(e){e.textContent=msg; e.className="syncstat"+(cls?" "+cls:"")}};
 async function sync(auto){
   const user=$("#user").value.trim().toLowerCase()||DB.user;
@@ -634,31 +655,42 @@ async function sync(auto){
   try{
     log("fetching archives…");
     const arch=await fetch(`https://api.chess.com/pub/player/${user}/games/archives`).then(r=>r.json());
-    const months=(arch.archives||[]).slice(-3);
+    const all=(arch.archives||[]);
+    // auto-sync only needs the tail; a manual sync walks the whole history
+    const months = auto ? all.slice(-2) : all;
     let games=[];
-    for(const m of months){const j=await fetch(m).then(r=>r.json()); games=games.concat(j.games||[])}
-    games=games.filter(g=>g.rules==="chess").sort((a,b)=>b.end_time-a.end_time).slice(0,8);
+    for(const m of months){
+      const j=await fetch(m).then(r=>r.json()); games=games.concat(j.games||[]);
+      if(!auto)stat(`reading history… ${games.length} games found`,"busy");
+    }
+    games=games.filter(g=>g.rules==="chess").sort((a,b)=>b.end_time-a.end_time);
+    if(auto)games=games.slice(0,10);
     // games we already have: refresh the result/ratings from the API without re-analysing
     let filled=0;
     for(const g of games){
       const known=DB.games[g.url]; if(!known)continue;
       const {result,how}=resultOf(g,user);
-      if(result&&known.result!==result){ known.result=result; known.how=how; filled++; }
+      let ch=false;
+      if(result&&known.result!==result){ known.result=result; known.how=how; ch=true; }
+      if(known.rated!==!!g.rated){ known.rated=!!g.rated; ch=true; }
+      if(ch)filled++;
     }
     if(filled){ save(); log(`filled in results for ${filled} earlier game${filled>1?"s":""}`); }
     const fresh=games.filter(g=>!DB.games[g.url]);
     log(`found ${games.length} recent games (${fresh.length} new)`);
     if(auto&&!fresh.length){ renderGames();
       stat(filled?`filled in ${filled} result${filled>1?"s":""}`:"up to date · "+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}), filled?"new":""); 
-      $("#sync").disabled=false; $("#pwrap").style.display="none"; DB.lastSync=Date.now(); save(); return; }
+      $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; DB.lastSync=Date.now(); save(); return; }
     if(fresh.length)stat(`${fresh.length} new game${fresh.length>1?"s":""} — analysing…`,"new");
     try{ DB.stats=await fetch(`https://api.chess.com/pub/player/${user}/stats`).then(r=>r.json()); }catch(e){}
 
-    let done=0;
+    let done=0; STOP=false;
+    if(fresh.length>3)$("#stopSync").style.display="block";
     for(const g of games){
+      if(STOP){ log("stopped by you — progress kept"); break; }
       if(DB.games[g.url]){done++;continue}
       log(`analysing ${g.white.username} v ${g.black.username}…`);
-      stat(`analysing ${done+1}/${games.length}: ${g.white.username} v ${g.black.username}`,"busy");
+      stat(`analysing game ${done+1}/${games.length} — ${g.white.username} v ${g.black.username}`,"busy");
       const rec=await analyseGame(g,user,(f)=>{
         $("#pbar").style.width=Math.round(((done+f)/games.length)*100)+"%";
       });
@@ -670,7 +702,7 @@ async function sync(auto){
     stat(fresh.length?`added ${fresh.length} game${fresh.length>1?"s":""} · ${DB.drills.length} drills total`
                      :"up to date", fresh.length?"new":"");
   }catch(e){ log("ERROR "+e); stat("couldn't reach chess.com",""); }
-  $("#sync").disabled=false; $("#pwrap").style.display="none"; save(); renderAll(); buildSetup();
+  $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; STOP=false; save(); renderAll(); buildSetup();
 }
 
 const DRAWCODES=["agreed","repetition","stalemate","insufficient","50move","timevsinsufficient"];
@@ -733,7 +765,7 @@ async function analyseGame(g,user,onProg){
   }
   const {result,how}=resultOf(g,user);
   return {url:g.url,white:g.white.username,black:g.black.username,
-    wr:g.white.rating,br:g.black.rating,end:g.end_time,isWhite,result,how,
+    wr:g.white.rating,br:g.black.rating,end:g.end_time,isWhite,result,how,rated:!!g.rated,
     moves:mine,errs,drills,cls:g.time_class,mlog};
 }
 
@@ -971,11 +1003,56 @@ const LEVELS=[
    pErr:0,errLo:0,errHi:0,drift:0},
   {id:4,name:"Mirror",  note:"plays at YOUR measured accuracy",pv:10,mt:150,skill:4,mirror:true},
 ];
+// each saved month becomes a playable version of you from that time
+function allLevels(){
+  const caps=capsules();
+  return LEVELS.concat(caps.map((c,i)=>({
+    id:100+i, capsule:c, mirror:true, pv:10, mt:150, skill:4,
+    name:"You · "+c.label,
+    note:`${c.games} games${c.rating?` · rated ~${c.rating}`:""} · ${c.acpl} acpl`
+  })));
+}
+function levelById(id){ return allLevels().find(l=>l.id===id)||LEVELS[0]; }
 const PRESETS=[
   {id:"full",name:"Full game",fen:null,note:"standard opening position"},
   {id:"kr",name:"King + rook mate",fen:"4k3/8/8/8/8/8/8/R3K3 w - - 0 1",note:"the one you stalemated away"},
   {id:"kq",name:"King + queen mate",fen:"4k3/8/8/8/8/8/8/Q3K3 w - - 0 1",note:"easier version of the same skill"},
 ];
+// ---- time capsules -------------------------------------------------------
+// A capsule is "how you played in month X", derived straight from the games
+// already analysed. Nothing extra is stored, so it can never drift out of date,
+// and a new month appears on its own once you've played enough in it.
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MIN_CAPSULE_MOVES=120;
+function capsules(){
+  const by={};
+  Object.values(DB.games).forEach(g=>{
+    if(!g.end||!g.mlog||!g.mlog.length)return;
+    // Only rated rapid/blitz. Games against your own bots, coaching games (which have
+    // hints switched on) and bullet are all excluded — otherwise one era's mix of
+    // formats makes it look better or worse than another for reasons that aren't skill.
+    if(g.cls!=="rapid"&&g.cls!=="blitz")return;
+    if(g.rated===false)return;
+    const d=new Date(g.end*1000);
+    const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    const b=by[key]||(by[key]={key,label:MONTHS[d.getMonth()]+" "+d.getFullYear(),
+      games:0,moves:0,losses:[],serious:0,ratings:[],end:g.end});
+    b.games++; b.end=Math.max(b.end,g.end);
+    const r=g.isWhite?g.wr:g.br; if(r)b.ratings.push(r);
+    g.mlog.forEach(m=>{
+      if(typeof m.cpLoss!=="number")return;
+      b.moves++;
+      if(Math.abs(m.eb)<1200)b.losses.push(Math.min(900,m.cpLoss));
+      if(m.wl>=THRESH&&!m.top)b.serious++;
+    });
+  });
+  return Object.values(by).filter(b=>b.moves>=MIN_CAPSULE_MOVES).map(b=>({
+    ...b,
+    rating: b.ratings.length?Math.round(b.ratings.reduce((a,c)=>a+c,0)/b.ratings.length):null,
+    acpl: Math.round(b.losses.reduce((a,c)=>a+c,0)/Math.max(b.losses.length,1)),
+    errRate: b.serious?+(b.moves/b.serious).toFixed(1):null
+  })).sort((a,b)=>a.key<b.key?-1:1);
+}
 // your own centipawn-loss distribution, taken from every game analysed so far
 function myLossProfile(){
   const out=[];
@@ -1036,12 +1113,14 @@ function pickCandidate(cands,lv,profile){
 }
 function buildSetup(){
   const prof=myLossProfile();
-  $("#levels").innerHTML=LEVELS.map(l=>{
-    let note=l.note;
-    if(l.mirror) note = prof.length>=40
-      ? `built from ${prof.length} of your own moves`
-      : `needs ~40 analysed moves — you have ${prof.length}`;
-    return `<button class="btn opt" data-k="lv" data-i="${l.id}"${l.mirror&&prof.length<40?' style="opacity:.55"':''}>${l.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${note}</small></button>`;
+  $("#levels").innerHTML=allLevels().map(l=>{
+    let note=l.note, weak=false;
+    if(l.mirror&&!l.capsule){
+      weak = prof.length<40;
+      note = weak ? `needs ~40 analysed moves — you have ${prof.length}`
+                  : `built from ${prof.length} of your own moves`;
+    }
+    return `<button class="btn opt${l.capsule?" cap":""}" data-k="lv" data-i="${l.id}"${weak?' style="opacity:.55"':''}>${l.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${note}</small></button>`;
   }).join("");
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
@@ -1059,11 +1138,11 @@ function buildSetup(){
   $("#startGame").onclick=()=>startGame(+sel.lv, sel.col, sel.pre);
 }
 function startGame(lvId,colChoice,preId){
-  const lv=LEVELS[lvId]||LEVELS[0], pre=PRESETS.find(p=>p.id===preId)||PRESETS[0];
+  const lv=levelById(lvId), pre=PRESETS.find(p=>p.id===preId)||PRESETS[0];
   let hero = colChoice==="r" ? (Math.random()<.5?"w":"b") : colChoice;
   if(pre.fen) hero="w";                       // mate drills always give you the material
   const ch = pre.fen? new Chess(pre.fen) : new Chess();
-  G={ch,hero,lv,pre,times:[],t0:Date.now(),over:false,startFen:ch.fen(),lastMove:null,profile:myLossProfile()}; clearUser("gBoard");
+  G={ch,hero,lv,pre,times:[],t0:Date.now(),over:false,startFen:ch.fen(),lastMove:null,profile:(lv.capsule?lv.capsule.losses:myLossProfile())}; clearUser("gBoard");
   $("#lastMv").innerHTML="";
   $("#setup").style.display="none"; $("#gameUI").style.display="block"; $("#gReview").innerHTML="";
   $("#gTitle").textContent=`${pre.name} · ${lv.name}`;
@@ -1372,6 +1451,30 @@ function gameReport(g){
   const saturated = decided>=0 && !serious.length && material.length>0;
   return {acpl,topPct,serious,material,hung,good,bad,moments,saturated,decided:decided>=0?M[decided].n:null,ev};
 }
+function renderCapsules(){
+  const caps=capsules(), el=$("#capsules"); if(!el)return;
+  if(caps.length<1){ el.innerHTML=`<div class="empty">Analyse your history and each month with enough
+    games turns into a version of you that you can play against.</div>`; return; }
+  const mx=Math.max(...caps.map(c=>c.acpl),1);
+  const first=caps[0], last=caps[caps.length-1];
+  const better = caps.length>1 && last.acpl<first.acpl;
+  el.innerHTML=
+    (caps.length>1?`<div class="capsum ${better?'good':''}">
+      ${better?`You give away <b>${Math.round((1-last.acpl/first.acpl)*100)}% less</b> per move than in ${first.label}
+                — ${first.acpl} → ${last.acpl} centipawns.`
+              :`From ${first.label} to ${last.label}: ${first.acpl} → ${last.acpl} centipawns lost per move.`}
+     </div>`:"")+
+    `<div class="bars">`+caps.map(c=>{
+      const w=Math.round(c.acpl/mx*100);
+      const col=c===last?"var(--s1)":"var(--axis)";
+      return `<div class="caprow">
+        <span class="cl">${c.label}</span>
+        <span class="track"><i style="width:${w}%;background:${col}"></i></span>
+        <span class="cv">${c.acpl} acpl</span>
+        <span class="cm">${c.games} games${c.rating?` · ~${c.rating}`:""}${c.errRate?` · 1 error per ${c.errRate}`:""}</span>
+      </div>`;
+    }).join("")+`</div>`;
+}
 function renderGames(){
   const gl=Object.values(DB.games).sort((a,b)=>b.end-a.end);
   if(!gl.length){$("#gameList").innerHTML=`<div class="empty">Nothing analysed yet.</div>`;return}
@@ -1491,7 +1594,7 @@ function wireDrillLinks(){
     window.scrollTo(0,0);
   });
 }
-function renderAll(){renderProgress();renderGames();if(!cur||!DB.drills.find(d=>d.id===(cur&&cur.id)))startDrill();}
+function renderAll(){renderProgress();renderCapsules();renderGames();if(!cur||!DB.drills.find(d=>d.id===(cur&&cur.id)))startDrill();}
 
 /* ---------- wiring ---------- */
 $$(".tab").forEach(t=>t.onclick=()=>{
