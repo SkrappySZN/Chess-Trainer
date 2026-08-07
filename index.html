@@ -25,6 +25,17 @@ body{margin:0;background:var(--plane);color:var(--ink);font-family:system-ui,-ap
 .syncstat.busy{color:var(--s1)}
 .syncstat.new{color:var(--good);font-weight:600}
 b.coin{color:var(--warning)}
+.warnbox{font-size:11.5px;line-height:1.45;color:var(--warning);background:rgba(250,178,25,.10);
+ border:1px solid rgba(250,178,25,.30);border-radius:8px;padding:8px 10px}
+.promo{position:fixed;inset:0;z-index:60;background:rgba(8,8,8,.7);backdrop-filter:blur(4px);
+ display:flex;align-items:center;justify-content:center;padding:24px}
+.promobox{background:var(--surface);border:1px solid var(--hair);border-radius:14px;padding:16px 18px;text-align:center}
+.promobox .ttl{font-size:13px;color:var(--muted);margin-bottom:10px}
+.promorow{display:flex;gap:8px}
+.promopc{background:var(--surface-2);border:1px solid var(--hair);border-radius:10px;cursor:pointer;
+ width:62px;height:62px;display:flex;align-items:center;justify-content:center;padding:0}
+.promopc:hover{border-color:var(--s1);background:var(--surface-3)}
+.promopc .pc{font-size:40px}
 .colnote{font-size:12px;color:var(--warning);margin-top:7px;min-height:15px}
 .themes{display:flex;gap:6px;margin-top:2px}
 .sw2{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0;
@@ -234,6 +245,37 @@ input[type=text]{background:var(--surface-2);border:1px solid var(--hair);color:
 .gbody{display:none;padding:6px 4px 22px}.gbody.open{display:block}
 ul.bul{margin:0;padding-left:18px;font-size:14px;color:var(--ink-2)}
 ul.bul li{margin:7px 0}
+
+/* openings */
+.subnav{gap:6px;margin-bottom:16px}
+.btn.sub.on{background:var(--surface-3);color:var(--ink);border-color:var(--s1);box-shadow:inset 0 -2px 0 var(--s1)}
+.osec{display:none}.osec.on{display:block}
+.studies{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px}
+.study{background:var(--surface);border:1px solid var(--hair);border-radius:13px;padding:17px 18px;
+ text-align:left;font:inherit;color:var(--ink-2);cursor:pointer;transition:.13s;display:block;width:100%}
+.study:hover{border-color:rgba(255,255,255,.28)}
+.study h4{margin:0 0 4px;font-size:15.5px;color:var(--ink);font-weight:620;letter-spacing:-.01em}
+.study .sline{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--s1);margin:6px 0 8px}
+.study .sdesc{font-size:13px;line-height:1.5}
+.study .smeta{display:flex;align-items:center;gap:8px;margin-top:11px;font-size:11.5px;color:var(--muted)}
+.chip{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:650;padding:3px 8px;border-radius:99px;
+ background:var(--surface-2);color:var(--ink-2)}
+.chip.w{background:#e8e6dd;color:#23231f}.chip.b{background:#3a3733;color:#e8e6dd}
+.mini-prog{height:5px;border-radius:3px;background:var(--axis);overflow:hidden;flex:1;min-width:40px}
+.mini-prog i{display:block;height:100%;background:var(--good);border-radius:3px}
+.opnote{background:var(--surface-2);border-radius:10px;padding:13px 15px;font-size:14px;color:var(--ink-2);
+ border-left:3px solid var(--s1);margin-bottom:12px;line-height:1.55}
+.opnote b{color:var(--ink)}
+.opnote.warn{border-left-color:var(--warning)}
+.opnote.good{border-left-color:var(--good)}
+.opidea{font-size:12.5px;color:var(--muted);border-top:1px solid var(--hair);padding-top:8px;margin-top:9px}
+.branchbtn{display:block;width:100%;text-align:left;background:var(--surface-2);border:1px solid var(--hair);
+ border-radius:9px;padding:10px 13px;font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer;margin-bottom:7px}
+.branchbtn:hover{border-color:var(--s1);color:var(--ink)}
+.branchbtn b{color:var(--ink);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.branchbtn .bd{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.optable td.num{font-variant-numeric:tabular-nums;text-align:right}
+.bad-op{color:var(--critical);font-weight:620}
 </style></head>
 <body>
 <div class="shell">
@@ -243,12 +285,14 @@ ul.bul li{margin:7px 0}
     <button class="tab on" data-v="train">Train</button>
     <button class="tab" data-v="play">Play</button>
     <button class="tab" data-v="prog">Progress</button>
+    <button class="tab" data-v="open">Openings</button>
     <button class="tab" data-v="games">Games</button>
   </div>
   <div class="railfoot">
     <input type="text" id="user" placeholder="chess.com username" spellcheck="false">
     <button class="btn sm" id="sync">Analyse my full history</button>
     <div class="syncstat" id="syncStat"></div>
+    <div class="warnbox" id="storeWarn" style="display:none"></div>
     <button class="btn sm" id="stopSync" style="display:none">Stop analysing</button>
     <div class="row" style="gap:6px">
       <button class="btn sm" id="exp" style="flex:1">Export</button>
@@ -278,11 +322,18 @@ ul.bul li{margin:7px 0}
   </div>
 </div>
 
+<div class="promo" id="promo" style="display:none">
+  <div class="promobox">
+    <div class="ttl">Promote to</div>
+    <div class="promorow" id="promoRow"></div>
+  </div>
+</div>
+
 
 <!-- ================= TRAIN ================= -->
 <div class="view on" id="v-train">
   <div id="noDrills" class="card empty">
-    No drills yet. Hit <b>Sync &amp; analyse games</b> above — it pulls your recent chess.com games
+    No drills yet. Hit <b>Analyse my full history</b> in the sidebar — it pulls your chess.com games
     and runs Stockfish on every move you played to find the moments you missed something.
   </div>
   <div id="drillUI" style="display:none">
@@ -333,6 +384,7 @@ ul.bul li{margin:7px 0}
     <div class="sect" style="margin-top:18px">
       <h2>Opponent</h2>
       <div class="row" id="levels"></div>
+      <div class="colnote" id="eraNote" style="color:var(--muted)"></div>
     </div>
     <div class="sect" style="margin-top:20px">
       <h2>You play</h2>
@@ -388,14 +440,83 @@ ul.bul li{margin:7px 0}
     <h2>You, over time</h2>
     <p class="note" style="margin:-6px 0 14px">Rated rapid and blitz only — coaching games, bullet and games against your own bots are left out so the months compare fairly.</p>
     <div id="capsules"></div>
-    <p class="note">Each month you've played enough games in becomes an opponent on the <b>Play</b> tab.
-    Average centipawn loss is how much you gave away per move — lower is better. Play an older version
-    of yourself to see the gap directly.</p>
+    <p class="note">Every year you played enough rated games in becomes an opponent on the <b>Play</b> tab —
+    <b>You · 2023</b> plays from that year's own distribution of mistakes, not from a rating estimate.
+    Average centipawn loss is how much you gave away per move; lower is better.</p>
   </div>
   <div class="card sect">
     <h2>Rating</h2>
     <div id="ratings"><div class="empty">Sync to load.</div></div>
   </div>
+</div>
+
+<!-- ================= OPENINGS ================= -->
+<div class="view" id="v-open">
+  <div class="row subnav" id="opNav">
+    <button class="btn sm sub on" data-o="learn">Learn</button>
+    <button class="btn sm sub" data-o="practice">Practice</button>
+    <button class="btn sm sub" data-o="report">Your openings</button>
+  </div>
+
+  <div class="osec on" id="o-learn">
+    <div id="studyPick"></div>
+    <div id="studyRun" style="display:none">
+      <div class="play">
+        <div>
+          <div class="qbar">
+            <span class="row" style="gap:8px">
+              <span class="pill pos" id="opName">—</span>
+              <span class="turnchip" id="opTurn"></span>
+            </span>
+            <button class="btn sm" id="opExit">All openings</button>
+          </div>
+          <div class="board" id="opBoard"></div>
+          <div class="prog"><i id="opBar" style="width:0%"></i></div>
+          <div class="row" style="gap:9px">
+            <button class="btn" id="opBack">‹ Back</button>
+            <button class="btn" id="opShow">Show me</button>
+            <button class="btn" id="opRestart">Restart line</button>
+            <button class="btn pri" id="opNext" style="margin-left:auto;display:none">Continue →</button>
+          </div>
+        </div>
+        <div>
+          <h3 id="opStep">—</h3>
+          <div id="opWhy"></div>
+          <div id="opBranch"></div>
+          <div class="mono" id="opMoves" style="max-height:150px;overflow:auto;line-height:1.9"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="osec" id="o-practice">
+    <div id="pracIdle"></div>
+    <div id="pracRun" style="display:none">
+      <div class="play">
+        <div>
+          <div class="qbar">
+            <span class="row" style="gap:8px">
+              <span class="pill pos" id="prName">—</span>
+              <span class="turnchip" id="prTurn"></span>
+            </span>
+            <button class="btn sm" id="prExit">Stop</button>
+          </div>
+          <div class="board" id="prBoard"></div>
+          <div class="row" style="margin-top:10px;gap:9px">
+            <button class="btn" id="prShow">I don't know</button>
+            <button class="btn pri" id="prNext" style="margin-left:auto;display:none">Next →</button>
+          </div>
+        </div>
+        <div>
+          <h3 id="prPrompt">Play your repertoire move</h3>
+          <p id="prCtx" style="font-size:14px"></p>
+          <div id="prFb"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="osec" id="o-report"><div id="opReport"></div></div>
 </div>
 
 <!-- ================= GAMES ================= -->
@@ -418,43 +539,188 @@ const CDN_SF="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfi
 const DEPTH=12, THRESH=15;           // win% drop that counts as a "serious" error
 const VAL={p:1,n:3,b:3,r:5,q:9,k:0};
 
-/* ---------- storage (degrades gracefully) ---------- */
+/* ---------- text safety ----------
+   Usernames come from chess.com and an imported file is entirely user-supplied,
+   so anything that isn't ours goes through esc() before it touches innerHTML. */
+const ESCMAP={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+const esc=(s)=>String(s==null?"":s).replace(/[&<>"']/g,c=>ESCMAP[c]);
+
+// renderGames() reports on every game, and sync used to re-render after each one,
+// so a long history re-derived the whole archive N times. Memoised on the game's
+// move-log length, which is the only thing that changes it. Declared here because
+// save() clears it when it prunes.
+const REPORTS=new Map();
+
+/* ---------- storage ----------
+   localStorage is ~5MB and each analysed game carries a full move log (a FEN per
+   move), so a long history WILL hit the ceiling. Silently swallowing the quota
+   error meant progress just stopped persisting with nothing to show for it.
+   Now: drop the oldest games' move logs to make room, and say so out loud. */
 const KEY="chesstrainer.v1", OLDKEY="forktrainer.v1";
-let DB={user:"",games:{},drills:[],attempts:[],stats:null};
-function save(){ try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){} }
+let DB={user:"",games:{},drills:[],attempts:[],oattempts:[],stats:null};
+let storageFull=false;
+function warnStore(msg){
+  const el=document.getElementById("storeWarn"); if(!el)return;
+  el.textContent=msg||""; el.style.display=msg?"block":"none";
+}
+// Free space by discarding move-by-move logs from the oldest games first.
+// Returns false once there's nothing left to give up.
+function pruneOldest(){
+  const gl=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length).sort((a,b)=>(a.end||0)-(b.end||0));
+  if(!gl.length)return 0;
+  const n=Math.max(1,Math.ceil(gl.length*0.2));
+  gl.slice(0,n).forEach(g=>{ g.mlog=[]; g.trimmed=true; });
+  return n;
+}
+function save(){
+  let trimmed=0;
+  for(;;){
+    try{
+      localStorage.setItem(KEY,JSON.stringify(DB));
+      storageFull=false;
+      warnStore(trimmed?`Storage was full — the move-by-move detail for your ${trimmed} oldest game${trimmed>1?"s":""} was dropped to make room. Totals and drills are intact. Export if you want to keep the rest.`:"");
+      return true;
+    }catch(e){
+      const n=pruneOldest();
+      if(!n){
+        storageFull=true;
+        warnStore("Browser storage is full and nothing is being saved. Export your progress, then use Start fresh.");
+        return false;
+      }
+      trimmed+=n; REPORTS.clear();
+    }
+  }
+}
 function load(){ try{const r=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY); if(r)DB=Object.assign(DB,JSON.parse(r))}catch(e){} }
 load();
 
 /* ---------- engine ---------- */
-let Chess=null, sfWorker=null, sfQueue=Promise.resolve();
+let Chess=null, sfWorker=null, engineDead=false, SF_SRC=null;
 async function boot(){
   const m=await import(CDN_CHESS); Chess=m.Chess||m.default;
-  const src=await fetch(CDN_SF).then(r=>r.text());
-  sfWorker=new Worker(URL.createObjectURL(new Blob([src],{type:'application/javascript'})));
-  await new Promise(res=>{
-    const h=e=>{ if((''+e.data).includes('uciok')){sfWorker.removeEventListener('message',h);res()} };
-    sfWorker.addEventListener('message',h); sfWorker.postMessage('uci');
+  const r=await fetch(CDN_SF);
+  if(!r.ok)throw new Error("stockfish "+r.status);
+  SF_SRC=await r.text();          // kept so the worker can be restarted without refetching
+  sfWorker=await spawnWorker();
+}
+function noteEngineDead(msg){
+  warnStore(msg||"The chess engine stopped responding. It's being restarted — if this keeps happening, reload the page.");
+}
+// Any legal move, used when the engine can't answer. Keeps every caller's
+// `best.slice(0,2)` working instead of throwing on a null.
+function anyLegal(fen){
+  try{ const g=new Chess(fen); const m=g.moves({verbose:true})[0];
+       return m?m.from+m.to+(m.promotion||""):"0000"; }catch(e){ return "0000" }
+}
+async function spawnWorker(){
+  if(!SF_SRC)throw new Error("engine source not loaded");
+  const w=new Worker(URL.createObjectURL(new Blob([SF_SRC],{type:'application/javascript'})));
+  w.addEventListener('error',()=>{ needRestart=true; });
+  await new Promise((res,rej)=>{
+    const to=setTimeout(()=>rej(new Error("engine never reported uciok")),30000);
+    const h=e=>{ if((''+e.data).includes('uciok')){clearTimeout(to);w.removeEventListener('message',h);res()} };
+    w.addEventListener('message',h); w.postMessage('uci');
+  });
+  return w;
+}
+async function restartEngine(){
+  try{ sfWorker&&sfWorker.terminate() }catch(e){}
+  sfWorker=null;
+  try{ sfWorker=await spawnWorker(); engineDead=false; needRestart=false; warnStore(""); return true; }
+  catch(e){ engineDead=true; needRestart=false;
+    noteEngineDead("The chess engine won't start. Reload the page to try again."); return false; }
+}
+
+/* ---------- engine queue ----------
+   One worker, so calls have to be serialised — but a plain FIFO meant an
+   interactive request (checking your drill answer, the bot's reply) sat behind
+   every position a background sync was grinding through. Hence priorities:
+   whatever you're waiting on jumps ahead, and waits at most one position.
+
+   The per-job deadline is armed when the job is ENQUEUED, not when it starts.
+   A timeout that only arms on start can't save you from a predecessor that
+   never finishes — which is exactly how "Checking…" hung forever. */
+const PRIO={BULK:0, REVIEW:1, LIVE:2};
+const DEADLINE={0:600000, 1:120000, 2:20000};
+const ENGINE_MS=25000;
+let jobs=[], jobSeq=0, pumping=false, needRestart=false, ENGINE_HARD_CAP=40000;
+const queueDepth=(prio)=>jobs.filter(j=>!j.done&&j.prio>=prio).length;
+
+function enqueue(prio,run,bail){
+  return new Promise(resolve=>{
+    const job={prio,run,bail,resolve,seq:jobSeq++,done:false};
+    job.timer=setTimeout(()=>{
+      if(job.done)return;
+      job.done=true; jobs=jobs.filter(j=>j!==job);
+      resolve(bail());                       // never leave a caller awaiting forever
+    },DEADLINE[prio]??60000);
+    jobs.push(job);
+    pump();
   });
 }
-// serialised UCI analyse -> {best, cp, mate}
-function analyse(fen,depth=DEPTH){
-  sfQueue=sfQueue.then(()=>new Promise(res=>{
-    let cp=null,mate=null,pv=[];
-    const h=e=>{
-      const s=''+e.data;
-      const m1=s.match(/score cp (-?\d+)/);   if(m1){cp=+m1[1];mate=null}
-      const m2=s.match(/score mate (-?\d+)/); if(m2){mate=+m2[1];cp=null}
-      const p=s.match(/ pv (.+)$/);            if(p)pv=p[1].trim().split(/\s+/);
-      const bm=s.match(/^bestmove (\S+)/);
-      if(bm){ sfWorker.removeEventListener('message',h); res({best:bm[1],cp,mate,pv}); }
-    };
+async function pump(){
+  if(pumping)return;
+  pumping=true;
+  try{
+    while(jobs.length){
+      if(needRestart)await restartEngine();
+      jobs.sort((a,b)=>b.prio-a.prio||a.seq-b.seq);   // highest priority, then FIFO
+      const job=jobs.shift();
+      if(job.done)continue;
+      // runUci settles on its own, but if it ever didn't, awaiting it here would
+      // stall the pump forever and take the whole engine down with it — every
+      // later call would fall back to its deadline and the app would look alive
+      // while doing nothing. So the pump abandons a job that blows past the cap
+      // and respawns the worker, which drops the stale listeners with it.
+      let out, abandoned=false;
+      out=await Promise.race([
+        Promise.resolve().then(job.run).catch(()=>job.bail()),
+        new Promise(r=>setTimeout(()=>{ abandoned=true; r(job.bail()) },ENGINE_HARD_CAP))
+      ]);
+      if(abandoned)needRestart=true;
+      if(job.done)continue;                  // deadline already answered the caller
+      job.done=true; clearTimeout(job.timer); job.resolve(out);
+    }
+  } finally { pumping=false; }
+}
+// One UCI exchange. Always settles: on silence it sends `stop`, waits briefly for
+// a real bestmove, then gives up and flags the worker for a restart.
+function runUci(cmds,ms,parse,bail){
+  return new Promise(res=>{
+    if(engineDead||!sfWorker)return res(bail());
+    let settled=false;
+    const finish=(v)=>{ if(settled)return; settled=true;
+      clearTimeout(to); clearTimeout(to2); sfWorker.removeEventListener('message',h); res(v); };
+    let to2=0;
+    const to=setTimeout(()=>{
+      try{ sfWorker.postMessage('stop') }catch(e){}
+      to2=setTimeout(()=>{ needRestart=true; finish(bail()); },1200);
+    },ms);
+    const h=e=>{ const out=parse(''+e.data); if(out!==undefined)finish(out); };
     sfWorker.addEventListener('message',h);
-    sfWorker.postMessage('setoption name MultiPV value 1');
-    sfWorker.postMessage('setoption name Skill Level value 20');
-    sfWorker.postMessage('position fen '+fen);
-    sfWorker.postMessage('go depth '+depth);
-  }));
-  return sfQueue;
+    try{ cmds.forEach(c=>sfWorker.postMessage(c)); }
+    catch(err){ needRestart=true; finish(bail()); }
+  });
+}
+function uciCall(prio,cmds,ms,parse,bail){
+  return enqueue(prio,()=>runUci(cmds,ms,parse,bail),bail);
+}
+// analyse -> {best, cp, mate, pv}
+function analyse(fen,depth=DEPTH,prio=PRIO.BULK){
+  let cp=null,mate=null,pv=[];
+  const bail=()=>({best:anyLegal(fen),cp:cp??0,mate,pv,timedOut:true});
+  return uciCall(prio,[
+    'setoption name MultiPV value 1',
+    'setoption name Skill Level value 20',
+    'position fen '+fen,
+    'go depth '+depth
+  ],ENGINE_MS,(s)=>{
+    const m1=s.match(/score cp (-?\d+)/);   if(m1){cp=+m1[1];mate=null}
+    const m2=s.match(/score mate (-?\d+)/); if(m2){mate=+m2[1];cp=null}
+    const p=s.match(/ pv (.+)$/);            if(p)pv=p[1].trim().split(/\s+/);
+    const bm=s.match(/^bestmove (\S+)/);
+    if(bm)return {best:bm[1],cp,mate,pv};
+  },bail);
 }
 const MATECAP=2000;
 const toCp=r=> r.mate!=null ? (r.mate>0?MATECAP:-MATECAP) : Math.max(-MATECAP,Math.min(MATECAP,r.cp??0));
@@ -646,21 +912,41 @@ const log=(s)=>{logEl.innerHTML=s+"<br>"+logEl.innerHTML};
 let STOP=false;
 $("#stopSync").onclick=()=>{STOP=true;stat("stopping…","busy")};
 const stat=(msg,cls)=>{const e=$("#syncStat"); if(e){e.textContent=msg; e.className="syncstat"+(cls?" "+cls:"")}};
+// chess.com answers a bad username with a 404 body that still parses as JSON, so
+// `.then(r=>r.json())` turned every failure into a silent "found 0 games". It also
+// rate-limits a tight archive loop — back off and retry rather than giving up.
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function getJSON(url,tries=3){
+  for(let i=0;i<tries;i++){
+    const r=await fetch(url);
+    if(r.ok)return r.json();
+    if(r.status===404)throw new Error("chess.com doesn't know that username");
+    if(r.status===429||r.status>=500){
+      if(i===tries-1)throw new Error(`chess.com is rate-limiting or down (${r.status})`);
+      stat("chess.com is throttling — waiting…","busy");
+      await sleep(1500*(i+1)); continue;
+    }
+    throw new Error("chess.com returned "+r.status);
+  }
+}
 async function sync(auto){
   const user=$("#user").value.trim().toLowerCase()||DB.user;
   if(!user){ stat("set a username first",""); showWelcome(); return; }
   DB.user=user; $("#sync").disabled=true; $("#pwrap").style.display="block";
-  if(!auto)logEl.innerHTML="";
+  STOP=false;
+  if(!auto){ logEl.innerHTML=""; $("#stopSync").style.display="block"; }
   stat("checking chess.com…","busy");
   try{
     log("fetching archives…");
-    const arch=await fetch(`https://api.chess.com/pub/player/${user}/games/archives`).then(r=>r.json());
+    const arch=await getJSON(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/games/archives`);
     const all=(arch.archives||[]);
+    if(!all.length)throw new Error(`chess.com has no game archive for "${user}"`);
     // auto-sync only needs the tail; a manual sync walks the whole history
     const months = auto ? all.slice(-2) : all;
     let games=[];
     for(const m of months){
-      const j=await fetch(m).then(r=>r.json()); games=games.concat(j.games||[]);
+      if(STOP)break;
+      const j=await getJSON(m); games=games.concat(j.games||[]);
       if(!auto)stat(`reading history… ${games.length} games found`,"busy");
     }
     games=games.filter(g=>g.rules==="chess").sort((a,b)=>b.end_time-a.end_time);
@@ -673,6 +959,18 @@ async function sync(auto){
       let ch=false;
       if(result&&known.result!==result){ known.result=result; known.how=how; ch=true; }
       if(known.rated!==!!g.rated){ known.rated=!!g.rated; ch=true; }
+      // backfill opening labels onto games analysed before this existed —
+      // headers only, so nothing gets re-analysed
+      if(!known.opening||!known.obook){
+        const pgn=g.pgn||"";
+        const mEco=pgn.match(/\[ECO "([^"]+)"/), mName=pgn.match(/\[ECOUrl "[^"]*\/openings\/([^"]+)"/);
+        if(mEco&&!known.eco)known.eco=mEco[1];
+        if(mName&&!known.opening){ known.opening=mName[1].replace(/-/g," "); ch=true; }
+        if(!known.obook){
+          try{ const t=new Chess();
+               if(t.load_pgn(pgn.split(/\n\n/).pop())){ known.obook=t.history().slice(0,14); ch=true; } }catch(e){}
+        }
+      }
       if(ch)filled++;
     }
     if(filled){ save(); log(`filled in results for ${filled} earlier game${filled>1?"s":""}`); }
@@ -682,26 +980,27 @@ async function sync(auto){
       stat(filled?`filled in ${filled} result${filled>1?"s":""}`:"up to date · "+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}), filled?"new":""); 
       $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; DB.lastSync=Date.now(); save(); return; }
     if(fresh.length)stat(`${fresh.length} new game${fresh.length>1?"s":""} — analysing…`,"new");
-    try{ DB.stats=await fetch(`https://api.chess.com/pub/player/${user}/stats`).then(r=>r.json()); }catch(e){}
+    try{ DB.stats=await getJSON(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/stats`,1); }catch(e){}
 
-    let done=0; STOP=false;
-    if(fresh.length>3)$("#stopSync").style.display="block";
+    let done=0;
+    $("#stopSync").style.display="block";
     for(const g of games){
       if(STOP){ log("stopped by you — progress kept"); break; }
       if(DB.games[g.url]){done++;continue}
-      log(`analysing ${g.white.username} v ${g.black.username}…`);
+      log(`analysing ${esc(g.white.username)} v ${esc(g.black.username)}…`);
       stat(`analysing game ${done+1}/${games.length} — ${g.white.username} v ${g.black.username}`,"busy");
       const rec=await analyseGame(g,user,(f)=>{
         $("#pbar").style.width=Math.round(((done+f)/games.length)*100)+"%";
       });
-      if(rec){DB.games[g.url]=rec; DB.drills=DB.drills.concat(rec.drills); save(); renderAll();}
+      if(rec){DB.games[g.url]=rec; DB.drills=DB.drills.concat(rec.drills); save(); renderSoon();}
       done++; $("#pbar").style.width=Math.round((done/games.length)*100)+"%";
     }
     log("done.");
     DB.lastSync=Date.now();
     stat(fresh.length?`added ${fresh.length} game${fresh.length>1?"s":""} · ${DB.drills.length} drills total`
                      :"up to date", fresh.length?"new":"");
-  }catch(e){ log("ERROR "+e); stat("couldn't reach chess.com",""); }
+  }catch(e){ const msg=(e&&e.message)||String(e);
+    log("ERROR "+esc(msg)); stat(msg.slice(0,80),""); }
   $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; STOP=false; save(); renderAll(); buildSetup();
 }
 
@@ -731,8 +1030,7 @@ async function analyseGame(g,user,onProg){
     sim.move(mv.san);
     let ea, hung=false;
     if(sim.game_over()){
-      ea = sim.in_checkmate() ? -MATECAP : 0;   // hero just moved; checkmate here = hero delivered it
-      if(sim.in_checkmate())ea=MATECAP;
+      ea = sim.in_checkmate() ? MATECAP : 0;    // hero just moved, so mate here is hero's
     } else {
       const r2=await analyse(sim.fen());
       ea=-toCp(r2);                              // r2 is from opponent's POV
@@ -764,8 +1062,16 @@ async function analyseGame(g,user,onProg){
     if(onProg)onProg(i/hist.length);
   }
   const {result,how}=resultOf(g,user);
+  // opening labels come free in the PGN headers — cheap to keep, and the whole
+  // Openings report is built from them
+  const pgn=g.pgn||"";
+  const mEco=pgn.match(/\[ECO "([^"]+)"/);
+  const mName=pgn.match(/\[ECOUrl "[^"]*\/openings\/([^"]+)"/);
   return {url:g.url,white:g.white.username,black:g.black.username,
     wr:g.white.rating,br:g.black.rating,end:g.end_time,isWhite,result,how,rated:!!g.rated,
+    eco:mEco?mEco[1]:null,
+    opening:mName?mName[1].replace(/-/g," "):null,
+    obook:hist.slice(0,14).map(m=>m.san),
     moves:mine,errs,drills,cls:g.time_class,mlog};
 }
 
@@ -795,7 +1101,7 @@ function numberLine(fen,sans){
   return out.trim();
 }
 // A plain-English "why", built only from facts we can verify on the board.
-async function explainBest(fen,bestUci,hero){
+async function explainBest(fen,bestUci,hero,prio=PRIO.LIVE){
   const g=new Chess(fen);
   let mv; try{ mv=g.move({from:bestUci.slice(0,2),to:bestUci.slice(2,4),promotion:'q'}) }catch(e){ return null }
   if(!mv)return null;
@@ -810,7 +1116,7 @@ async function explainBest(fen,bestUci,hero){
   }
   let line=null;
   try{
-    const r=await analyse(g.fen(),12);
+    const r=await analyse(g.fen(),12,prio);
     const uci=[bestUci].concat((r.pv||[]).slice(0,7));
     const w=walkLine(fen,uci,hero);
     if(w.sans.length>1){
@@ -832,10 +1138,73 @@ async function explainBest(fen,bestUci,hero){
 /* ---------- drilling ---------- */
 let cur=null,sel=null,t0=0,tick=null,answered=false,started=false,viewResult=false,lastTry=null;
 const RED="#e05a5a", GREEN="#2fbf2f";
+/* ---------- drill scheduling ----------
+   The old picker sorted by how many times you'd SEEN a position and ignored
+   whether you got it right, so a drill you failed was queued behind every drill
+   you'd never met — with a few hundred drills, you never saw your misses again.
+
+   This is a Leitner ladder: get one right and it moves out a box, miss it and it
+   drops to the bottom. Derived from DB.attempts rather than stored on the drill,
+   for the same reason motifOf() recomputes — retuning the intervals below
+   retroactively fixes every drill, and there's nothing to migrate. */
+const DAY=24*60*60*1000;
+const BOXES=[10*60*1000, DAY, 3*DAY, 7*DAY, 21*DAY, 60*DAY];
+const SKIP_DEFER=10*60*1000;
+// A position you keep missing backs off instead of looping: 10min, 20, 40, 80,
+// capped at two hours. A flat cooldown let one stubborn drill eat half a session,
+// and seeing the same board back-to-back teaches nothing — the spacing is the point.
+const RELEARN_CAP=12;
+const relearnGap=(misses)=>BOXES[0]*Math.min(Math.pow(2,Math.max(0,misses-1)),RELEARN_CAP);
+// shared by tactical drills and opening moves — both schedule off the same ladder
+function attemptsIndex(list){
+  const by={};
+  (list||[]).forEach(a=>{ (by[a.id]||(by[a.id]=[])).push(a) });
+  for(const k in by) by[k].sort((x,y)=>(x.ts||0)-(y.ts||0));
+  return by;
+}
+const attemptsByDrill=()=>attemptsIndex(DB.attempts);
+function drillState(A){
+  let box=0, tries=0, misses=0, skips=0, last=0;
+  for(const a of A||[]){
+    if((a.ts||0)>last)last=a.ts||0;
+    if(a.skipped){ skips++; continue; }     // a skip is "not now", not "I got it wrong"
+    tries++;
+    if(a.correct) box=Math.min(box+1,BOXES.length-1);
+    else { box=0; misses++; }
+  }
+  const fresh=tries===0;
+  const due = fresh ? (skips?last+SKIP_DEFER:0)
+                    : last+(box===0?relearnGap(misses):BOXES[box]);
+  return {box,tries,misses,skips,last,due,fresh};
+}
+const drillStateOf=(id,by)=>drillState((by||attemptsByDrill())[id]);
 function pickDrill(){
-  const seen={}; DB.attempts.forEach(a=>{seen[a.id]=(seen[a.id]||0)+1});
-  const pool=DB.drills.slice().sort((a,b)=>(seen[a.id]||0)-(seen[b.id]||0)||b.drop-a.drop);
-  return pool[0]||null;
+  if(!DB.drills.length)return null;
+  const by=attemptsByDrill(), now=Date.now();
+  const all=DB.drills.map(d=>({d,s:drillState(by[d.id])}));
+  const ready=all.filter(x=>now>=x.s.due);
+  const first=(list,cmp)=>list.length?list.slice().sort(cmp)[0].d:null;
+  const worst=(a,b)=>(b.d.drop||0)-(a.d.drop||0);
+  const weakest=(a,b)=>a.s.box-b.s.box||a.s.last-b.s.last;
+  return (
+    // 1. positions you've actually missed, once their 10-minute cooldown is up.
+    //    The cooldown is what stops a miss reappearing while the answer is still
+    //    on screen, and what keeps failures from crowding out new material.
+    first(ready.filter(x=>!x.s.fresh&&x.s.box===0),(a,b)=>b.s.misses-a.s.misses||worst(a,b))
+    // 2. new material, costliest mistakes first
+    || first(ready.filter(x=>x.s.fresh),worst)
+    // 3. genuine reviews that have come due
+    || first(ready,weakest)
+    // 4. nothing due — keep the session going rather than dead-ending
+    || first(all,weakest)
+  );
+}
+function drillNote(d,by){
+  const s=drillStateOf(d.id,by);
+  if(s.fresh)return "";
+  if(s.box===0&&s.misses)return ` You've missed this one ${s.misses===1?"once":s.misses+" times"} before.`;
+  if(s.box>=1)return ` You've had this right ${s.box===1?"once":s.box+" times"} running — this is a recall check.`;
+  return "";
 }
 function playedSquares(d){
   if(d.playedUci&&d.playedUci.length>=4)return [d.playedUci.slice(0,2),d.playedUci.slice(2,4)];
@@ -864,8 +1233,8 @@ function startDrill(){
   const m=MOTIF[motifOf(cur)]||MOTIF.pos;
   $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
   $("#prompt").textContent="Find the move you missed";
-  $("#ctx").innerHTML=`From your game vs <b>${cur.vs}</b>, move ${cur.movenum}. You played <b>${cur.played}</b> here — `+
-    `it'll be marked in red on the board. Find something better.`;
+  $("#ctx").innerHTML=`From your game vs <b>${esc(cur.vs)}</b>, move ${esc(cur.movenum)}. You played <b>${esc(cur.played)}</b> here — `+
+    `it'll be marked in red on the board. Find something better.`+drillNote(cur);
   $("#fb").innerHTML=""; $("#next").style.display="none"; $("#toggleRes").style.display="none";
   $("#hint").disabled=false; $("#skip").disabled=false;
   setTurnChip(); setLegend();
@@ -914,18 +1283,37 @@ function onSquare(name){
   drawBoard(marks);
 }
 async function submit(from,to){
+  const d0=cur, secs=Math.round((Date.now()-t0)/1000);
+  let promo='q';
+  if(isPromotion(new Chess(cur.fen),from,to)){
+    promo=await askPromotion(cur.hero);
+    if(cur!==d0||answered)return;          // moved on while the picker was open
+  }
   answered=true; clearInterval(tick);
-  const secs=Math.round((Date.now()-t0)/1000);
   const g=new Chess(cur.fen);
-  const mv=g.move({from,to,promotion:'q'});
-  lastTry={from,to,san:mv?mv.san:""};
-  const uci=from+to;
-  $("#fb").innerHTML=`<div class="fb"><div class="hd">Checking…</div>Running the engine on your move.</div>`;
-  let correct = uci===cur.best.slice(0,4);
-  let yourCp=null;
+  const mv=g.move({from,to,promotion:promo});
+  if(!mv){ answered=false; return; }
+  lastTry={from,to,san:mv.san};
+  // compare the promotion piece too, so e8=N never scores as e8=Q
+  const bestPromo=cur.best.slice(4,5);
+  let correct = from===cur.best.slice(0,2) && to===cur.best.slice(2,4) && (bestPromo?promo===bestPromo:true);
+  let yourCp=null, stalled=false;
   if(!correct){
-    const r=await analyse(g.fen()); yourCp=-toCp(r);
-    correct = (cur.eb - yourCp) <= 30;
+    // Only the exact best move can be graded without the engine, so this is the
+    // one wait the drill can't skip. Say what's happening instead of "Checking…"
+    // forever, and never leave it with no way out.
+    const ahead=queueDepth(PRIO.LIVE)-1;
+    $("#fb").innerHTML=`<div class="fb"><div class="hd">Checking…</div>Running the engine on your move.`+
+      (ahead>0?` <span style="color:var(--muted)">(${ahead} ahead in the queue)</span>`:``)+`</div>`;
+    const slow=setTimeout(()=>{ const b=$("#fb .hd");
+      if(b)b.parentElement.innerHTML=`<div class="hd">Still checking…</div>The engine is busy. `+
+        `The answer is below either way — this only affects grading your own move.`; },4000);
+    const r=await analyse(g.fen(),DEPTH,PRIO.LIVE);
+    clearTimeout(slow);
+    if(cur!==d0)return;                       // drill changed under us
+    stalled=!!r.timedOut;
+    yourCp=-toCp(r);
+    correct = !stalled && (cur.eb - yourCp) <= 30;
   } else yourCp=cur.eb;
   viewResult=false; setLegend(); showAnswerBoard();
   $("#toggleRes").style.display="inline-block"; $("#toggleRes").textContent="Show result";
@@ -933,11 +1321,14 @@ async function submit(from,to){
   const ev=(c)=>(c>=MATECAP?"winning":c<=-MATECAP?"lost":(c>0?"+":"")+(c/100).toFixed(1));
   $("#fb").innerHTML=
     `<div class="fb ${correct?'ok':'bad'}">
-      <div class="hd">${correct?'Correct — '+mv.san:'Not quite. The move was '+cur.bestSan}</div>
-      ${correct? `You found it in ${secs} seconds.` :
-        `You played <b>${mv.san}</b> (${ev(yourCp)}). <b>${cur.bestSan}</b> keeps ${ev(cur.eb)}.`}
+      <div class="hd">${correct?'Correct — '+esc(mv.san)
+        :stalled?'The move was '+esc(cur.bestSan)
+        :'Not quite. The move was '+esc(cur.bestSan)}</div>
+      ${correct? `You found it in ${secs} seconds.`
+        : stalled? `The engine couldn't grade <b>${esc(mv.san)}</b> in time, so this one isn't scored — but <b>${esc(cur.bestSan)}</b> was the move here.`
+        : `You played <b>${esc(mv.san)}</b> (${ev(yourCp)}). <b>${esc(cur.bestSan)}</b> keeps ${ev(cur.eb)}.`}
       <div id="why" class="whybox">working out why…</div>
-      ${!correct?`<div class="mono">In the real game you played ${cur.played} here and it cost you ${cur.drop} points of win probability.</div>`:''}
+      ${!correct?`<div class="mono">In the real game you played ${esc(cur.played)} here and it cost you ${cur.drop} points of win probability.</div>`:''}
     </div>`;
   explainBest(cur.fen,cur.best,cur.hero).then(x=>{
     const box=$("#why"); if(!box)return;
@@ -948,7 +1339,10 @@ async function submit(from,to){
       `<p class="whytip">${m.tip}</p>`;
   });
   $("#next").style.display="inline-block"; $("#hint").disabled=true; $("#skip").disabled=true;
-  DB.attempts.push({id:cur.id,motif:motifOf(cur),correct,secs,ts:Date.now()});
+  // an ungraded attempt is recorded as a skip, so it neither counts against your
+  // accuracy nor resets your streak on this position
+  DB.attempts.push({id:cur.id,motif:motifOf(cur),correct:stalled?false:correct,
+                    skipped:stalled||undefined,secs,ts:Date.now()});
   save(); renderProgress();
 }
 function showAnswerBoard(){
@@ -1003,13 +1397,19 @@ const LEVELS=[
    pErr:0,errLo:0,errHi:0,drift:0},
   {id:4,name:"Mirror",  note:"plays at YOUR measured accuracy",pv:10,mt:150,skill:4,mirror:true},
 ];
-// each saved month becomes a playable version of you from that time
+// "2025-08" -> 1202508, stable for as long as that month exists
+// id derived from the era itself, not its position in the list — an index-based
+// id silently repointed your saved opponent at a different period as soon as a
+// new one appeared
+const eraId=(key)=>2000000+(+String(key).slice(0,4));
+// each year you played enough becomes a playable version of you from back then
 function allLevels(){
-  const caps=capsules();
-  return LEVELS.concat(caps.map((c,i)=>({
-    id:100+i, capsule:c, mirror:true, pv:10, mt:150, skill:4,
+  const now=new Date().getFullYear();
+  return LEVELS.concat(eras().map(c=>({
+    id:eraId(c.key), capsule:c, mirror:true, pv:10, mt:150, skill:4,
     name:"You · "+c.label,
-    note:`${c.games} games${c.rating?` · rated ~${c.rating}`:""} · ${c.acpl} acpl`
+    note:`${c.games} games${c.rating?` · rated ~${c.rating}`:""} · ${c.acpl} acpl`+
+         (+c.key===now?" · you now":"")
   })));
 }
 function levelById(id){ return allLevels().find(l=>l.id===id)||LEVELS[0]; }
@@ -1024,20 +1424,23 @@ const PRESETS=[
 // and a new month appears on its own once you've played enough in it.
 const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MIN_CAPSULE_MOVES=120;
-function capsules(){
+// An era bot has to be believable, and a persona built from 50 moves is noise
+// wearing a costume. Years need a real sample before they're offered as opponents.
+const MIN_ERA_MOVES=300;
+// Bucket your analysed games however keyFn says, and measure each bucket the same way.
+// Only rated rapid/blitz. Games against your own bots, coaching games (which have
+// hints switched on) and bullet are all excluded — otherwise one era's mix of
+// formats makes it look better or worse than another for reasons that aren't skill.
+function bucketGames(keyFn){
   const by={};
   Object.values(DB.games).forEach(g=>{
     if(!g.end||!g.mlog||!g.mlog.length)return;
-    // Only rated rapid/blitz. Games against your own bots, coaching games (which have
-    // hints switched on) and bullet are all excluded — otherwise one era's mix of
-    // formats makes it look better or worse than another for reasons that aren't skill.
     if(g.cls!=="rapid"&&g.cls!=="blitz")return;
     if(g.rated===false)return;
-    const d=new Date(g.end*1000);
-    const key=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
-    const b=by[key]||(by[key]={key,label:MONTHS[d.getMonth()]+" "+d.getFullYear(),
-      games:0,moves:0,losses:[],serious:0,ratings:[],end:g.end});
-    b.games++; b.end=Math.max(b.end,g.end);
+    const d=new Date(g.end*1000), k=keyFn(d);
+    const b=by[k.key]||(by[k.key]={key:k.key,label:k.label,
+      games:0,moves:0,losses:[],serious:0,ratings:[],end:g.end,first:g.end});
+    b.games++; b.end=Math.max(b.end,g.end); b.first=Math.min(b.first,g.end);
     const r=g.isWhite?g.wr:g.br; if(r)b.ratings.push(r);
     g.mlog.forEach(m=>{
       if(typeof m.cpLoss!=="number")return;
@@ -1046,12 +1449,28 @@ function capsules(){
       if(m.wl>=THRESH&&!m.top)b.serious++;
     });
   });
-  return Object.values(by).filter(b=>b.moves>=MIN_CAPSULE_MOVES).map(b=>({
+  return by;
+}
+function measured(by,minMoves){
+  return Object.values(by).filter(b=>b.moves>=minMoves).map(b=>({
     ...b,
     rating: b.ratings.length?Math.round(b.ratings.reduce((a,c)=>a+c,0)/b.ratings.length):null,
     acpl: Math.round(b.losses.reduce((a,c)=>a+c,0)/Math.max(b.losses.length,1)),
     errRate: b.serious?+(b.moves/b.serious).toFixed(1):null
   })).sort((a,b)=>a.key<b.key?-1:1);
+}
+// months drive the trend chart on Progress
+const capsules=()=>measured(bucketGames(d=>({
+  key:d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"),
+  label:MONTHS[d.getMonth()]+" "+d.getFullYear()})), MIN_CAPSULE_MOVES);
+// years drive the "play your past self" opponents — a month is rarely enough
+// games for a casual schedule, and a year is the scale people actually think in
+const eras=()=>measured(bucketGames(d=>({
+  key:String(d.getFullYear()), label:String(d.getFullYear())})), MIN_ERA_MOVES);
+// every year that has games but not enough of them to build an honest opponent
+function thinEras(){
+  const all=bucketGames(d=>({key:String(d.getFullYear()),label:String(d.getFullYear())}));
+  return Object.values(all).filter(b=>b.moves<MIN_ERA_MOVES).sort((a,b)=>a.key<b.key?-1:1);
 }
 // your own centipawn-loss distribution, taken from every game analysed so far
 function myLossProfile(){
@@ -1069,33 +1488,31 @@ function sampleTargetLoss(lv,profile){
   if(Math.random()<lv.pErr)return lv.errLo+Math.random()*(lv.errHi-lv.errLo);
   return Math.random()*lv.drift;
 }
-let G=null; // {ch, hero, level, preset, times, t0, tick, over}
+// Every game gets an id. Engine calls are async and the queue is shared, so a
+// reply computed for an abandoned game could otherwise arrive after you'd already
+// started a new one — `G.over` alone doesn't catch it, because the new G isn't
+// over. It landed as an instant, illegal move that fell through to a random one.
+let G=null, GID=0; // {id, ch, hero, level, preset, times, t0, tick, over}
+const liveGame=(id)=>!!G&&G.id===id&&!G.over;
 function engineMove(fen,lv){
-  sfQueue=sfQueue.then(()=>new Promise(res=>{
-    const cands={};
-    const h=e=>{
-      const s=''+e.data;
-      const mp=s.match(/multipv (\d+)/), pv=s.match(/ pv (\S+)/), dp=s.match(/depth (\d+)/);
-      const cp=s.match(/score cp (-?\d+)/), mt=s.match(/score mate (-?\d+)/);
-      if(pv){
-        const i=mp?+mp[1]:1, d=dp?+dp[1]:0;
-        const val = mt ? (+mt[1]>0?MATECAP:-MATECAP) : (cp?+cp[1]:0);
-        if(!cands[i]||d>=cands[i].d)cands[i]={mv:pv[1],cp:val,d};
-      }
-      const bm=s.match(/^bestmove (\S+)/);
-      if(bm){
-        sfWorker.removeEventListener('message',h);
-        const list=Object.keys(cands).sort((a,b)=>+a-+b).map(k=>cands[k]).filter(c=>c&&c.mv);
-        res(list.length?list:[{mv:bm[1],cp:0}]);
-      }
-    };
-    sfWorker.addEventListener('message',h);
-    sfWorker.postMessage('setoption name MultiPV value '+lv.pv);
-    sfWorker.postMessage('setoption name Skill Level value '+lv.skill);
-    sfWorker.postMessage('position fen '+fen);
-    sfWorker.postMessage('go movetime '+lv.mt);
-  }));
-  return sfQueue;
+  const cands={};
+  const list=()=>Object.keys(cands).sort((a,b)=>+a-+b).map(k=>cands[k]).filter(c=>c&&c.mv);
+  return uciCall(PRIO.LIVE,[
+    'setoption name MultiPV value '+lv.pv,
+    'setoption name Skill Level value '+lv.skill,
+    'position fen '+fen,
+    'go movetime '+lv.mt
+  ], lv.mt+ENGINE_MS, (s)=>{
+    const mp=s.match(/multipv (\d+)/), pv=s.match(/ pv (\S+)/), dp=s.match(/depth (\d+)/);
+    const cp=s.match(/score cp (-?\d+)/), mt=s.match(/score mate (-?\d+)/);
+    if(pv){
+      const i=mp?+mp[1]:1, d=dp?+dp[1]:0;
+      const val = mt ? (+mt[1]>0?MATECAP:-MATECAP) : (cp?+cp[1]:0);
+      if(!cands[i]||d>=cands[i].d)cands[i]={mv:pv[1],cp:val,d};
+    }
+    const bm=s.match(/^bestmove (\S+)/);
+    if(bm){ const l=list(); return l.length?l:[{mv:bm[1],cp:0}]; }
+  }, ()=>{ const l=list(); return l.length?l:[{mv:anyLegal(fen),cp:0}]; });
 }
 // choose the candidate whose cost is closest to the mistake we intended to make
 function pickCandidate(cands,lv,profile){
@@ -1122,6 +1539,18 @@ function buildSetup(){
     }
     return `<button class="btn opt${l.capsule?" cap":""}" data-k="lv" data-i="${l.id}"${weak?' style="opacity:.55"':''}>${l.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${note}</small></button>`;
   }).join("");
+  // Say why a year isn't on the list. Silently dropping it looks like a bug, and
+  // "2024 exists but has 52 moves" is genuinely useful to know about your own history.
+  const thin=thinEras(), note=$("#eraNote");
+  if(note){
+    const analysed=Object.values(DB.games).some(g=>g.mlog&&g.mlog.length);
+    note.innerHTML = !analysed
+      ? `Analyse your history and each year you played enough becomes an opponent here.`
+      : thin.length
+        ? `No bot for ${thin.map(t=>`<b>${esc(t.label)}</b> (${t.moves} move${t.moves===1?"":"s"} analysed)`).join(", ")} — `+
+          `needs ${MIN_ERA_MOVES}+ to be anything more than a guess.`
+        : ``;
+  }
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
   const sel={lv:DB.playLv??0,col:DB.playCol??"w",pre:DB.playPre??"full"};
@@ -1142,10 +1571,13 @@ function startGame(lvId,colChoice,preId){
   let hero = colChoice==="r" ? (Math.random()<.5?"w":"b") : colChoice;
   if(pre.fen) hero="w";                       // mate drills always give you the material
   const ch = pre.fen? new Chess(pre.fen) : new Chess();
-  G={ch,hero,lv,pre,times:[],t0:Date.now(),over:false,startFen:ch.fen(),lastMove:null,profile:(lv.capsule?lv.capsule.losses:myLossProfile())}; clearUser("gBoard");
+  G={id:++GID,ch,hero,lv,pre,times:[],t0:Date.now(),startedAt:Date.now(),over:false,startFen:ch.fen(),lastMove:null,profile:(lv.capsule?lv.capsule.losses:myLossProfile())}; clearUser("gBoard");
+  REV=null; gSel=null;
   $("#lastMv").innerHTML="";
   $("#setup").style.display="none"; $("#gameUI").style.display="block"; $("#gReview").innerHTML="";
   $("#gTitle").textContent=`${pre.name} · ${lv.name}`;
+  $("#gStatus").textContent = ch.turn()===hero ? "your move" : "their move…";
+  $("#gTimer").textContent="0s"; $("#gTimer").className="timer";
   const flipped = colChoice==="r" && !pre.fen;
   $("#gSub").innerHTML=`${flipped?`<b class="coin">Random gave you ${hero==="w"?"White":"Black"}.</b> `:""}`+
     `You're <b>${hero==="w"?"White":"Black"}</b>. No help until it's over — then I analyse the whole thing.`;
@@ -1178,9 +1610,34 @@ function onGameSquare(name){
   gSel=name; const marks={[name]:"sel"}; mv.forEach(m=>{if(!marks[m.to])marks[m.to]="dotm"});
   drawGame(marks);
 }
-function playHuman(from,to){
+// Promotion used to be hardcoded to a queen everywhere, so an underpromotion —
+// the knight that mates, the rook that dodges stalemate — was unreachable.
+function isPromotion(ch,from,to){
+  try{ return ch.moves({verbose:true}).some(m=>m.from===from&&m.to===to&&m.promotion) }catch(e){ return false }
+}
+function askPromotion(color){
+  return new Promise(res=>{
+    const el=$("#promo");
+    $("#promoRow").innerHTML=["q","r","b","n"].map(p=>
+      `<button class="promopc" data-p="${p}" title="${({q:"Queen",r:"Rook",b:"Bishop",n:"Knight"})[p]}"><span class="pc ${color}">${GLYPH[p]}</span></button>`).join("");
+    const done=(p)=>{ el.style.display="none"; document.removeEventListener("keydown",key); res(p); };
+    const key=(e)=>{ const p={q:"q",r:"r",b:"b",n:"n"}[e.key.toLowerCase()];
+      if(p)done(p); else if(e.key==="Escape")done("q"); };
+    $$("#promoRow .promopc").forEach(b=>b.onclick=()=>done(b.dataset.p));
+    document.addEventListener("keydown",key);
+    el.style.display="flex";
+  });
+}
+async function playHuman(from,to){
+  const id=G.id;
+  let promo='q';
+  if(isPromotion(G.ch,from,to)){
+    promo=await askPromotion(G.hero);
+    if(!liveGame(id))return;
+  }
   G.times.push(Math.round((Date.now()-G.t0)/1000));
-  const m=G.ch.move({from,to,promotion:'q'});
+  const m=G.ch.move({from,to,promotion:promo});
+  if(!m)return;
   G.lastMove={from,to,san:m?m.san:"",by:"you"};
   $("#lastMv").innerHTML=`<span class="q">you played</span> <b>${m?m.san:""}</b>`;
   drawGame(); if(checkOver())return;
@@ -1189,18 +1646,21 @@ function playHuman(from,to){
 const MIN_THINK=900;   // never reply instantly — you can't read a move that appears in 0ms
 async function maybeEngine(){
   if(!G||G.over||G.ch.turn()===G.hero)return;
+  const id=G.id;
   $("#gStatus").textContent="their move…";
   $("#lastMv").innerHTML=`<span class="q">thinking…</span>`;
   const t=Date.now();
   const cands=await engineMove(G.ch.fen(),G.lv);
-  if(!G||G.over)return;
-  const legal=G.ch.moves({verbose:true});
-  let uci=pickCandidate(cands,G.lv,G.profile);
+  if(!liveGame(id))return;
   const wait=MIN_THINK-(Date.now()-t);
   if(wait>0) await new Promise(r=>setTimeout(r,wait));
-  if(!G||G.over)return;
-  let mv=G.ch.move({from:uci.slice(0,2),to:uci.slice(2,4),promotion:'q'});
-  if(!mv){ const r=legal[Math.floor(Math.random()*legal.length)]; mv=G.ch.move(r.san); }
+  if(!liveGame(id)||G.ch.turn()===G.hero)return;
+  const tryMove=(u)=>u&&G.ch.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u.slice(4,5)||'q'});
+  let mv=tryMove(pickCandidate(cands,G.lv,G.profile));
+  // fall through the engine's other candidates before ever inventing a move
+  if(!mv)for(const c of cands){ mv=tryMove(c.mv); if(mv)break; }
+  if(!mv){ const legal=G.ch.moves({verbose:true}); if(!legal.length)return; mv=G.ch.move(legal[0].san); }
+  if(!mv)return;
   G.lastMove={from:mv.from,to:mv.to,san:mv.san,by:"them"};
   const what = mv.captured ? ` <span class="q">— took your ${({p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen"})[mv.captured]}</span>` : "";
   $("#lastMv").innerHTML=`<span class="q">they played</span> <b>${mv.san}</b>${what}`;
@@ -1233,22 +1693,26 @@ $("#newGame").onclick=()=>{ if(G)G.over=true; clearInterval(G&&G.tick);
   $("#gameUI").style.display="none"; $("#setup").style.display="block"; };
 
 async function reviewGame(){
+  const g0=G, id=G.id, hero=G.hero;
   const rv=$("#gReview");
   rv.innerHTML=`<div class="fb"><div class="hd">Analysing…</div>Running the engine over every move you played.<div class="prog"><i id="rvbar" style="width:0%"></i></div></div>`;
-  const hist=G.ch.history({verbose:true});
-  const sim=new Chess(G.startFen);
+  const hist=g0.ch.history({verbose:true});
+  const sim=new Chess(g0.startFen);
   const drills=[]; let mine=0; const mlog=[];
   for(let i=0;i<hist.length;i++){
+    // walked away and started another game — drop the half-finished review
+    // rather than write a partial record or paint over the new board
+    if(!G||G.id!==id)return;
     const mv=hist[i];
-    if(sim.turn()!==G.hero){ sim.move(mv.san); continue; }
+    if(sim.turn()!==hero){ sim.move(mv.san); continue; }
     mine++;
     const fen=sim.fen();
-    const r1=await analyse(fen);
+    const r1=await analyse(fen,DEPTH,PRIO.REVIEW);
     const eb=toCp(r1);
     sim.move(mv.san);
     let ea, hung=false;
     if(sim.game_over()) ea = sim.in_checkmate()?MATECAP:0;
-    else { const r2=await analyse(sim.fen()); ea=-toCp(r2);
+    else { const r2=await analyse(sim.fen(),DEPTH,PRIO.REVIEW); ea=-toCp(r2);
       try{ const t=new Chess(sim.fen());
            const rm=t.move({from:r2.best.slice(0,2),to:r2.best.slice(2,4),promotion:'q'});
            hung=!!(rm&&rm.captured); }catch(e){} }
@@ -1264,26 +1728,28 @@ async function reviewGame(){
     if(drop>=THRESH && (mv.from+mv.to)!==r1.best.slice(0,4)){
       const t=new Chess(fen);
       const bm=t.move({from:r1.best.slice(0,2),to:r1.best.slice(2,4),promotion:'q'});
-      drills.push({id:"play:"+Date.now()+"#"+i,fen,hero:G.hero,best:r1.best,
+      drills.push({id:"play:"+g0.startedAt+"."+g0.id+"#"+i,fen,hero,best:r1.best,
         bestSan:bm?bm.san:r1.best,played:mv.san,playedUci:mv.from+mv.to,
         eb,ea,drop:Math.round(drop*10)/10,motif:classify(fen,r1.best),
-        vs:G.lv.name+" bot",movenum:Math.floor(i/2)+1,url:"play"});
+        vs:g0.lv.name+" bot",movenum:Math.floor(i/2)+1,url:"play"});
     }
     const bar=$("#rvbar"); if(bar)bar.style.width=Math.round((i/hist.length)*100)+"%";
   }
-  const url="play:"+Date.now();
-  DB.games[url]={url,white:G.hero==="w"?DB.user:G.lv.name,black:G.hero==="w"?G.lv.name:DB.user,
-    wr:0,br:0,end:Math.floor(Date.now()/1000),isWhite:G.hero==="w",
-    moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:G.result||"",how:G.result||""};
-  G.mlog=mlog;
-  DB.drills=DB.drills.concat(drills); save(); renderProgress(); renderGames();
-  const med=G.times.length?G.times.slice().sort((a,b)=>a-b)[Math.floor(G.times.length/2)]:0;
-  buildReview(mlog,med);
+  if(!G||G.id!==id)return;
+  const url="play:"+g0.startedAt+"."+g0.id;
+  const me=DB.user||"You";
+  DB.games[url]={url,white:hero==="w"?me:g0.lv.name,black:hero==="w"?g0.lv.name:me,
+    wr:0,br:0,end:Math.floor(Date.now()/1000),isWhite:hero==="w",
+    moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:g0.result||"",how:g0.result||""};
+  g0.mlog=mlog;
+  DB.drills=DB.drills.concat(drills); REPORTS.clear(); save(); renderProgress(); renderGames();
+  const med=g0.times.length?g0.times.slice().sort((a,b)=>a-b)[Math.floor(g0.times.length/2)]:0;
+  buildReview(mlog,med,hero);
 }
 
 /* ---------- interactive game review ---------- */
-let REV=null;   // {moments,i,side}
-function buildReview(mlog,med){
+let REV=null;   // {moments,i,side,hero}
+function buildReview(mlog,med,hero){
   const errs=mlog.filter(m=>!m.top&&m.cpLoss>=100)
                  .sort((a,b)=>b.cpLoss-a.cpLoss).slice(0,6)
                  .map(m=>({...m,kind:"bad"}));
@@ -1291,7 +1757,7 @@ function buildReview(mlog,med){
   const step=Math.max(1,Math.floor(goodPool.length/4));
   const goods=goodPool.filter((_,i)=>i%step===0).slice(0,4).map(m=>({...m,kind:"good"}));
   const moments=[...errs,...goods].sort((a,b)=>a.n-b.n);
-  REV={moments,i:0,side:"you"};
+  REV={moments,i:0,side:"you",hero};
   const acpl=Math.round(mlog.reduce((s,m)=>s+m.cpLoss,0)/Math.max(mlog.length,1));
   const topPct=Math.round(100*mlog.filter(m=>m.top).length/Math.max(mlog.length,1));
   const hung=mlog.filter(m=>m.tookBack&&m.cpLoss>=150).length;
@@ -1346,7 +1812,7 @@ function showMoment(){
     else { A.push({from:m.from,to:m.to,color:RED}); M[m.from]="you"; M[m.to]="you";
            A.push({from:bf,to:bt,color:GREEN}); M[bf]="ok"; M[bt]="ok"; }
   }
-  renderBoard($("#gBoard"),fen,G.hero==="b",M,A);
+  renderBoard($("#gBoard"),fen,REV.hero==="b",M,A);
   let bestSan=m.best;
   try{const t=new Chess(fen);const x=t.move({from:bf,to:bt,promotion:'q'});if(x)bestSan=x.san}catch(e){}
   const ev=c=>Math.abs(c)>=MATECAP?(c>0?"winning":"lost"):((c>0?"+":"")+(c/100).toFixed(1));
@@ -1359,6 +1825,452 @@ function showMoment(){
   $("#lastMv").innerHTML=`<span class="q">${REV.side==="you"?"you played":"engine wanted"}</span> <b>${REV.side==="you"?m.san:bestSan}</b>`;
 }
 
+/* ================= OPENINGS =================
+   A repertoire is authored as flat LINES — a list of plies, each optionally
+   carrying the reason that move is played. Lines that share a prefix are merged
+   into a tree at load, so authoring stays readable and transpositions collapse
+   on their own. Even plies are White's.
+
+   Content is deliberately narrow: one structure, learned from both sides. The
+   Italian as White and 1...e5 as Black reach the same pawn skeleton and the same
+   f7/f2 targets, so every hour spent on one repays the other. */
+const STUDIES=[
+{ id:"italian-w", name:"Italian Game", color:"w", eco:"C50",
+  blurb:"Your White repertoire. Three pieces out and castled by move six, aiming at the one square Black's king defends alone.",
+  idea:"Knights before bishops, bishop to c4 hitting f7, then c3 and d3 to build a broad centre and castle. You are trying to be fully developed before your opponent is.",
+  lines:[
+  { name:"Main line — Giuoco Pianissimo", plies:[
+    {san:"e4",  why:"Take the centre and open lines for both the queen and the light-squared bishop. Almost every move you play for the next five is already decided by this one."},
+    {san:"e5",  why:"Black stakes an equal claim. This is the Open Game, and it's what you'll face most often."},
+    {san:"Nf3", why:"Develop <b>with a threat</b> — the knight attacks e5. A developing move that also asks a question is worth two that don't.<br><br>Knights before bishops: the knight's best square is obvious now, the bishop's isn't."},
+    {san:"Nc6", why:"Black defends e5 and develops. Any other defence of the pawn is worse."},
+    {san:"Bc4", why:"<b>This is the Italian.</b> The bishop's diagonal ends on f7 — the only square in Black's camp defended by the king and nothing else.<br><br>You are not threatening anything yet. You're aiming at the weak spot and finishing development."},
+    {san:"Bc5", why:"Black mirrors you, aiming at your own weak square, f2. The position is symmetrical — which means whoever understands it better wins it."},
+    {san:"c3",  why:"Quiet, and the most important move in the line. It prepares <b>d4</b>, so your centre pawns can advance side by side.<br><br>It also gives the c4 bishop an escape square on c2 if Black ever plays ...Na5 or ...b5."},
+    {san:"Nf6", why:"Black develops and attacks your e4 pawn. You need to attend to it."},
+    {san:"d3",  why:"Defends e4 and opens the last bishop. Modest, but it keeps everything protected.<br><br>The greedy 4.d4 exd4 5.cxd4 Bb4+ hands Black a check and the initiative — you're not ready for the fight yet."},
+    {san:"d6",  why:"Black holds the centre the same way. Both sides are now simply completing development."},
+    {san:"O-O", why:"<b>Castle by move six.</b> The king leaves the centre before any file can be opened against it, and the rook joins the game.<br><br>At every level below 1500, more games are lost to an uncastled king than to any opening mistake."},
+    {san:"O-O", why:"Both kings are safe and the opening is over. You've achieved everything the Italian sets out to do."}
+  ]},
+  { name:"Two Knights Defence", plies:[
+    {san:"e4"},{san:"e5"},{san:"Nf3"},{san:"Nc6"},{san:"Bc4"},
+    {san:"Nf6", label:"Two Knights", why:"Instead of copying you, Black develops the other knight and hits e4 straight away. This is the <b>Two Knights Defence</b> and it's sharper than the main line."},
+    {san:"d3",  why:"Defend the pawn and keep it quiet. You transpose back into the setup you already know.<br><br>The aggressive 4.Ng5 leads to the Fried Liver — enormous complications that are just as likely to catch you as your opponent. Take the calm route."},
+    {san:"Bc5", why:"Black develops the bishop anyway, and we're back in familiar territory."},
+    {san:"c3",  why:"Same plan as ever: prepare d4, give the bishop a retreat."},
+    {san:"d6"},
+    {san:"O-O", why:"Castle. Identical structure to the main line — which is exactly why this repertoire is worth learning: everything funnels into one position type."}
+  ]}]},
+
+{ id:"open-b", name:"The Open Game", color:"b", eco:"C50",
+  blurb:"Your Black repertoire against 1.e4. The same structure as your White opening, seen from the other side.",
+  idea:"Meet 1.e4 with 1...e5, develop knights first, and mirror White's setup. Because you know this structure as White, you already know what your opponent is trying to do.",
+  lines:[
+  { name:"Against the Italian", plies:[
+    {san:"e4"},
+    {san:"e5",  why:"The most direct reply. You claim your half of the centre immediately and open lines for your own pieces.<br><br>This is the same structure you play as White — you already know both sides of it."},
+    {san:"Nf3"},
+    {san:"Nc6", why:"Defend e5 and develop. Knights before bishops, exactly as White does."},
+    {san:"Bc4"},
+    {san:"Bc5", why:"Mirror it. Your bishop eyes <b>f2</b> — White's mirror-image weak square, defended only by the king."},
+    {san:"c3"},
+    {san:"Nf6", why:"Develop and hit e4. Every move so far has developed a piece <i>and</i> done something else."},
+    {san:"d3"},
+    {san:"d6",  why:"Hold e5 and free the last bishop."},
+    {san:"O-O"},
+    {san:"O-O", why:"Castled and equal. As Black, reaching a balanced position with everything developed <i>is</i> the win."}
+  ]},
+  { name:"Against the Ruy Lopez", plies:[
+    {san:"e4"},{san:"e5"},{san:"Nf3"},{san:"Nc6"},
+    {san:"Bb5", label:"Ruy Lopez", why:"The <b>Ruy Lopez</b>. White pins nothing yet but attacks the knight defending e5."},
+    {san:"a6",  why:"Ask the bishop what it intends. This is almost always the right response.<br><br>The point: 4.Bxc6 dxc6 5.Nxe5?? loses to 5...Qd4, forking the knight and e4. So the 'free pawn' isn't free."},
+    {san:"Ba4"},
+    {san:"Nf6", why:"Develop and attack e4, as always."},
+    {san:"O-O"},
+    {san:"Be7", why:"A modest square, but the right one — it unpins nothing and prepares to castle. Bc5 here runs into c3 and d4 with tempo."},
+    {san:"Re1"},
+    {san:"b5",  why:"Now push the bishop away for good before castling."},
+    {san:"Bb3"},
+    {san:"O-O", why:"Castled safely. You've reached a respectable Ruy Lopez without memorising a single tactic."}
+  ]},
+  { name:"Against the Scotch", plies:[
+    {san:"e4"},{san:"e5"},{san:"Nf3"},{san:"Nc6"},
+    {san:"d4",  label:"Scotch", why:"The <b>Scotch</b>. White opens the centre immediately instead of building up."},
+    {san:"exd4",why:"Take it. Declining leaves White with a big centre for free."},
+    {san:"Nxd4"},
+    {san:"Nf6", why:"Develop and hit e4 — the same idea in a different position. Attacking that pawn is the recurring theme of your whole Black repertoire."},
+    {san:"Nc3"},
+    {san:"Bb4", why:"Pin the knight so it can't defend e4, and prepare to castle quickly."},
+    {san:"Nxc6"},
+    {san:"bxc6",why:"Recapture toward the centre. Your structure is slightly damaged, but your pieces are active and you castle next move."}
+  ]}]},
+
+{ id:"scholars-b", name:"Stopping Scholar's Mate", color:"b", eco:"C20",
+  blurb:"The four-move mate, and the two moves that end it. This is the single most common way games are lost below 1000.",
+  idea:"White brings the queen out early to attack f7 with queen and bishop together. Defend f7, gain time on the queen, and White's early aggression becomes a liability.",
+  lines:[
+  { name:"The Bc4 and Qh5 attack", plies:[
+    {san:"e4"},
+    {san:"e5",  why:"Normal. Nothing has gone wrong yet."},
+    {san:"Bc4"},
+    {san:"Nc6", why:"Develop normally. You don't yet know what White intends."},
+    {san:"Qh5", label:"Scholar's Mate", why:"<b>Here it is.</b> The queen and the bishop both hit <b>f7</b>, and Qxf7 would be mate — the king can't take because the bishop on c4 defends the queen.<br><br>Don't panic. An early queen is a target."},
+    {san:"g6",  why:"<b>The move.</b> It attacks the queen, so White must deal with that before anything else — and it blocks the h5–f7 diagonal at the same time.<br><br>Not 5...Nf6??, which attacks the queen but ignores mate: 6.Qxf7#."},
+    {san:"Qf3", why:"White renews the threat — the queen now aims at f7 down the <b>f-file</b> instead, still supported by the bishop."},
+    {san:"Nf6", why:"<b>Block the file.</b> The knight steps onto f6 and the queen simply can't reach f7 through it.<br><br>It develops, it defends, and it hits e4. You're now better: White's queen is exposed and you'll gain time chasing it."},
+    {san:"Ne2", why:"White finally develops a piece. The attack is over — and White has spent four moves moving one piece while you developed two."},
+    {san:"Bg7", why:"Finish the job. The bishop takes the long diagonal, you castle next move, and you are simply better developed."}
+  ]}]},
+
+{ id:"friedliver-b", name:"The f7 Attack", color:"b", eco:"C57",
+  blurb:"The Fried Liver — a knight sacrifice on f7 that wins on the spot if you don't know it, and loses a piece for White if you do.",
+  idea:"When White plays Ng5, f7 is attacked twice. Counter in the centre with ...d5 instead of defending, and don't let the knight reach f7 with check.",
+  lines:[
+  { name:"Meeting 4.Ng5", plies:[
+    {san:"e4"},
+    {san:"e5",  why:"Your normal reply. The attack you're about to meet only appears once both sides develop naturally — which is exactly why it catches so many people."},
+    {san:"Nf3"},
+    {san:"Nc6", why:"Standard development."},
+    {san:"Bc4"},
+    {san:"Nf6", why:"The Two Knights. You develop and attack e4 — but this invites White's sharpest try."},
+    {san:"Ng5", label:"Fried Liver", why:"<b>The knight lunges at f7</b>, which is now hit twice: by the knight and by the bishop on c4. It's defended only by your king.<br><br>Defending it directly doesn't work. You have to hit back in the centre."},
+    {san:"d5",  why:"<b>Counter-attack.</b> The pawn attacks the bishop on c4 — the second attacker of f7. Removing it defuses the whole idea.<br><br>Passive defences lose: 4...Qe7 and 4...d6 both leave White with a big attack for free."},
+    {san:"exd5",why:"White takes and now threatens Nxf7, forking your queen and rook."},
+    {san:"Na5", why:"<b>The key move, and the counter-intuitive one.</b> You ignore the pawn and attack the bishop again.<br><br>The natural 5...Nxd5?? is the actual Fried Liver: 6.Nxf7! Kxf7 7.Qf3+ and your king is dragged out into the open with no way back.<br><br>Na5 looks like it puts the knight offside — but the bishop is the piece that makes Nxf7 work, and chasing it off the c4 diagonal is what defuses the attack."},
+    {san:"Bb5+",why:"The bishop keeps out of the way with check."},
+    {san:"c6",  why:"Block, and hit the bishop a third time. You'll win the d5 pawn back shortly and White's pieces will retreat.<br><br>You are a pawn down here — and completely fine. White's attack is gone and your extra central pawns tell in the long run."}
+  ]}]}
+];
+
+/* ---------- repertoire tree ---------- */
+const TREES={};
+function studyTree(st){
+  if(TREES[st.id])return TREES[st.id];
+  const root={children:{},ply:0,fenBefore:new Chess().fen(),san:null};
+  const errs=[];
+  for(const line of st.lines){
+    const g=new Chess(); let node=root;
+    for(let i=0;i<line.plies.length;i++){
+      const p=line.plies[i], fenBefore=g.fen();
+      let mv=null; try{ mv=g.move(p.san) }catch(e){}
+      if(!mv){ errs.push(`${st.id} · ${line.name} · ply ${i+1}: illegal move "${p.san}"`); break; }
+      let ch=node.children[mv.san];
+      if(!ch) ch=node.children[mv.san]={
+        san:mv.san, uci:mv.from+mv.to+(mv.promotion||""), from:mv.from, to:mv.to,
+        fenBefore, fenAfter:g.fen(), ply:i+1, children:{}, why:"", label:"", lines:[] };
+      if(p.why&&!ch.why)ch.why=p.why;
+      if(p.label&&!ch.label)ch.label=p.label;
+      if(!ch.lines.includes(line.name))ch.lines.push(line.name);
+      node=ch;
+    }
+  }
+  if(errs.length)console.error("Repertoire errors:\n"+errs.join("\n"));
+  return TREES[st.id]={root,errs};
+}
+const kidsOf=(n)=>Object.keys(n.children).map(k=>n.children[k]);
+const turnOf=(fen)=>fen.split(" ")[1];
+// every position in a study where it's YOUR move — the things worth drilling
+function studyPositions(st){
+  const out=[], seen={};
+  (function walk(n){
+    for(const c of kidsOf(n)){
+      if(turnOf(c.fenBefore)===st.color && !seen[c.fenBefore]){
+        seen[c.fenBefore]=1;
+        out.push({id:c.fenBefore, fen:c.fenBefore, san:c.san, uci:c.uci, why:c.why,
+                  studyId:st.id, studyName:st.name, color:st.color, ply:c.ply, lines:c.lines});
+      }
+      walk(c);
+    }
+  })(studyTree(st).root);
+  return out;
+}
+const allPositions=()=>STUDIES.flatMap(studyPositions);
+const studyById=(id)=>STUDIES.find(s=>s.id===id);
+
+/* ---------- openings: progress ---------- */
+const oIndex=()=>attemptsIndex(DB.oattempts||[]);
+function studyProgress(st,by){
+  by=by||oIndex();
+  const ps=studyPositions(st);
+  const known=ps.filter(p=>drillState(by[p.id]).box>=2).length;
+  return {total:ps.length, known, pct:ps.length?Math.round(100*known/ps.length):0};
+}
+function opDue(by){
+  by=by||oIndex(); const now=Date.now();
+  return allPositions().filter(p=>now>=drillState(by[p.id]).due);
+}
+
+/* ---------- openings: Learn ---------- */
+let OP=null;   // {st, g, node, awaiting}
+function openStudy(id){
+  const st=studyById(id); if(!st)return;
+  OP={st, g:new Chess(), node:studyTree(st).root, picked:null, showed:false};
+  $("#studyPick").style.display="none"; $("#studyRun").style.display="block";
+  $("#opName").textContent=st.name;
+  clearUser("opBoard");
+  opStep();
+}
+function opExit(){ OP=null; $("#studyRun").style.display="none"; $("#studyPick").style.display="block"; renderStudies(); }
+function opDraw(marks={},arrows=null){
+  renderBoard($("#opBoard"),OP.g.fen(),OP.st.color==="b",marks,arrows);
+  const h=OP.g.history(); let s="";
+  for(let i=0;i<h.length;i+=2)s+=`${i/2+1}. ${h[i]||""} ${h[i+1]||""}  `;
+  $("#opMoves").textContent=s||"—";
+  const deepest=Math.max(...OP.st.lines.map(l=>l.plies.length));
+  $("#opBar").style.width=Math.round(100*OP.g.history().length/deepest)+"%";
+}
+function opSay(html,cls){ $("#opWhy").innerHTML=html?`<div class="opnote ${cls||""}">${html}</div>`:""; }
+// The driver. Decides whose move it is and what the panel should be asking for.
+function opStep(){
+  const st=OP.st, kids=kidsOf(OP.node);
+  $("#opBranch").innerHTML=""; $("#opNext").style.display="none";
+  $("#opTurn").innerHTML=`<span class="dot2" style="background:${st.color==="w"?'#fbfbf8':'#17171a'}"></span>You're ${st.color==="w"?"White":"Black"}`;
+  if(!kids.length){
+    opDraw();
+    $("#opStep").textContent="Line complete";
+    opSay(`<b>That's the line.</b> ${esc(OP.node.lines[0]||"")} — you played every move of it.<br><br>`+
+          `Run it again, or take it to <b>Practice</b>, where the moves come back at spaced intervals until they stick.`,"good");
+    $("#opShow").disabled=true;
+    return;
+  }
+  $("#opShow").disabled=false;
+  if(turnOf(OP.g.fen())===st.color){
+    // your move: they have to find it
+    OP.showed=false;
+    opDraw();
+    $("#opStep").textContent=`Move ${Math.floor(OP.g.history().length/2)+1} — your turn`;
+    const only=kids[0];
+    opSay(`Find your repertoire move.`+(only.lines.length>1?``:``));
+  } else {
+    // opponent's move: one reply plays itself, several become a choice
+    if(kids.length===1){ setTimeout(()=>{ if(OP)opPlay(kids[0],true) },650); opDraw();
+      $("#opStep").textContent="Their move…"; }
+    else {
+      opDraw();
+      $("#opStep").textContent="Your opponent has options";
+      opSay(`More than one move is common here. Pick which one to study — you can come back for the others.`);
+      $("#opBranch").innerHTML=kids.map((c,i)=>
+        `<button class="branchbtn" data-k="${i}"><b>${esc(c.san)}</b>${c.label?` — ${esc(c.label)}`:""}
+          <span class="bd">${esc(c.lines[0]||"")}</span></button>`).join("");
+      $$("#opBranch .branchbtn").forEach(b=>b.onclick=()=>opPlay(kids[+b.dataset.k],true));
+    }
+  }
+}
+function opPlay(node,theirs){
+  if(!OP)return;
+  OP.g.move(node.san); OP.node=node;
+  opDraw({[node.from]:theirs?"lmf":"ok",[node.to]:theirs?"lmt":"ok"},
+         [{from:node.from,to:node.to,color:theirs?"#f6f669":GREEN}]);
+  $("#opStep").textContent=`${theirs?"They played":"You played"} ${node.san}`;
+  const idea=OP.st.idea;
+  opSay(node.why||`<b>${esc(node.san)}</b> — a normal developing move in this line.`,theirs?"":"good");
+  if(kidsOf(node).length){ $("#opNext").style.display="inline-block"; $("#opNext").textContent="Continue →"; }
+  else setTimeout(()=>{ if(OP)opStep() },400);
+}
+function opTry(from,to){
+  if(!OP)return;
+  const kids=kidsOf(OP.node);
+  const hit=kids.find(c=>c.from===from&&c.to===to);
+  if(hit){ opPlay(hit,false); return; }
+  let san=null; try{ const t=new Chess(OP.g.fen()); const m=t.move({from,to,promotion:'q'}); san=m&&m.san }catch(e){}
+  opDraw({[from]:"bad",[to]:"bad"},[{from,to,color:RED}]);
+  opSay(`<b>${esc(san||from+to)}</b> isn't the repertoire move here — it may not even be bad, but the point of a repertoire is playing the <i>same</i> thing every time.<br><br>`+
+        `Try again, or hit <b>Show me</b>.`,"warn");
+}
+function opBack(){
+  if(!OP||!OP.g.history().length)return;
+  OP.g.undo();
+  // walk the tree from the root to wherever we now are
+  let n=studyTree(OP.st).root;
+  for(const san of OP.g.history()){ const c=n.children[san]; if(!c)break; n=c; }
+  OP.node=n; opStep();
+}
+
+/* ---------- openings: Practice ---------- */
+let PR=null;
+function pracPick(){
+  const by=oIndex(), now=Date.now();
+  const all=allPositions().map(p=>({p,s:drillState(by[p.id])}));
+  const ready=all.filter(x=>now>=x.s.due);
+  const first=(l,c)=>l.length?l.slice().sort(c)[0].p:null;
+  const weakest=(a,b)=>a.s.box-b.s.box||a.s.last-b.s.last;
+  return first(ready.filter(x=>!x.s.fresh&&x.s.box===0),(a,b)=>b.s.misses-a.s.misses||a.p.ply-b.p.ply)
+      || first(ready.filter(x=>x.s.fresh),(a,b)=>a.p.ply-b.p.ply)   // shallow moves before deep ones
+      || first(ready,weakest)
+      || first(all,weakest);
+}
+function pracStart(){
+  const p=pracPick(); if(!p)return;
+  PR={p, g:new Chess(p.fen), answered:false, t0:Date.now()};
+  $("#pracIdle").style.display="none"; $("#pracRun").style.display="block";
+  $("#prName").textContent=p.studyName;
+  $("#prTurn").innerHTML=`<span class="dot2" style="background:${p.color==="w"?'#fbfbf8':'#17171a'}"></span>You're ${p.color==="w"?"White":"Black"}`;
+  $("#prPrompt").textContent="Play your repertoire move";
+  const s=drillState(oIndex()[p.id]);
+  $("#prCtx").innerHTML=`<b>${esc(p.studyName)}</b> — ${esc(p.lines[0]||"")}, move ${Math.ceil(p.ply/2)}.`+
+    (s.fresh?" First time you've seen this one."
+     :s.box===0&&s.misses?` You've missed this ${s.misses===1?"once":s.misses+" times"}.`
+     :s.box>=1?` Right ${s.box===1?"once":s.box+" times"} running.`:"");
+  $("#prFb").innerHTML=""; $("#prNext").style.display="none"; $("#prShow").disabled=false;
+  clearUser("prBoard");
+  prDraw();
+}
+function prDraw(marks={},arrows=null){ renderBoard($("#prBoard"),PR.g.fen(),PR.p.color==="b",marks,arrows); }
+function prRecord(correct){
+  DB.oattempts=DB.oattempts||[];
+  DB.oattempts.push({id:PR.p.id, studyId:PR.p.studyId, correct,
+    secs:Math.round((Date.now()-PR.t0)/1000), ts:Date.now()});
+  save(); renderOpenings();
+}
+function prAnswer(from,to,gaveUp){
+  if(!PR||PR.answered)return;
+  const p=PR.p;
+  const right=!gaveUp && from===p.uci.slice(0,2) && to===p.uci.slice(2,4);
+  PR.answered=true; $("#prShow").disabled=true;
+  const bf=p.uci.slice(0,2), bt=p.uci.slice(2,4);
+  const M={},A=[];
+  if(!right && !gaveUp){ M[from]="bad"; M[to]="bad"; A.push({from,to,color:RED}); }
+  M[bf]="ok"; M[bt]="ok"; A.push({from:bf,to:bt,color:GREEN});
+  prDraw(M,A);
+  let played=null;
+  if(!gaveUp){ try{ const t=new Chess(p.fen); const m=t.move({from,to,promotion:'q'}); played=m&&m.san }catch(e){} }
+  $("#prFb").innerHTML=`<div class="fb ${right?'ok':'bad'}">
+    <div class="hd">${right?`Correct — ${esc(p.san)}`:gaveUp?`The move is ${esc(p.san)}`:`Not this time. The move is ${esc(p.san)}`}</div>
+    ${right?"":played?`You played <b>${esc(played)}</b>.`:""}
+    ${p.why?`<div class="whybox">${p.why}</div>`:""}
+  </div>`;
+  prRecord(right);
+  $("#prNext").style.display="inline-block";
+}
+
+/* ---------- openings: your real games ---------- */
+// how many plies of a game match some line in your repertoire for that colour
+function bookDepth(g){
+  const sans=g.obook; if(!sans||!sans.length)return null;
+  const mine=STUDIES.filter(s=>s.color===(g.isWhite?"w":"b"));
+  let best=0;
+  for(const st of mine){
+    let n=studyTree(st).root, d=0;
+    for(const san of sans){ const c=n.children[san]; if(!c)break; n=c; d++; }
+    if(d>best)best=d;
+  }
+  return best;
+}
+function openingStats(){
+  const gl=Object.values(DB.games).filter(g=>g.cls!=="vs bot");
+  const out={w:{games:[],names:{},first:{}}, b:{games:[],names:{},first:{}}};
+  for(const g of gl){
+    const k=g.isWhite?"w":"b", o=out[k];
+    o.games.push(g);
+    if(g.opening){ const e=o.names[g.opening]||(o.names[g.opening]={n:0,win:0}); e.n++; if(g.result==="win")e.win++; }
+    const fm=(g.obook||[])[0];
+    if(fm&&g.isWhite){ const e=o.first[fm]||(o.first[fm]={n:0,win:0}); e.n++; if(g.result==="win")e.win++; }
+  }
+  return out;
+}
+
+/* ---------- openings: rendering ---------- */
+function renderStudies(){
+  const by=oIndex();
+  const grp=(c)=>STUDIES.filter(s=>s.color===c);
+  const card=(s)=>{
+    const pr=studyProgress(s,by);
+    const main=s.lines[0].plies.slice(0,6).map((p,i)=>i%2?p.san:`${Math.floor(i/2)+1}.${p.san}`).join(" ");
+    return `<button class="study" data-s="${esc(s.id)}">
+      <span class="chip ${s.color}">${s.color==="w"?"White":"Black"}</span>
+      <h4 style="margin-top:8px">${esc(s.name)}</h4>
+      <div class="sline">${esc(main)}…</div>
+      <div class="sdesc">${esc(s.blurb)}</div>
+      <div class="smeta"><span>${pr.known}/${pr.total} moves known</span>
+        <span class="mini-prog"><i style="width:${pr.pct}%"></i></span></div>
+    </button>`;
+  };
+  $("#studyPick").innerHTML=
+    `<div class="opnote">Pick a line and walk it move by move. The board plays your opponent; you find your
+      own moves and get the reason for each one. <b>Learn</b> teaches, <b>Practice</b> makes it stick.</div>
+     <h2 style="margin-top:22px">As White</h2><div class="studies">${grp("w").map(card).join("")}</div>
+     <h2 style="margin-top:26px">As Black</h2><div class="studies">${grp("b").map(card).join("")}</div>`;
+  $$("#studyPick .study").forEach(b=>b.onclick=()=>openStudy(b.dataset.s));
+}
+function renderPractice(){
+  const by=oIndex(), due=opDue(by), total=allPositions().length;
+  const known=allPositions().filter(p=>drillState(by[p.id]).box>=2).length;
+  const attempts=(DB.oattempts||[]).length;
+  const acc=attempts?Math.round(100*(DB.oattempts.filter(a=>a.correct).length)/attempts):0;
+  $("#pracIdle").innerHTML=`
+    <div class="tiles">
+      <div class="tile ${due.length?'w':'g'}"><span class="v">${due.length}</span><div class="k">moves due to practise now</div></div>
+      <div class="tile ${known?'g':''}"><span class="v">${known}</span><div class="k">of ${total} repertoire moves holding</div></div>
+      <div class="tile ${acc>=70?'g':acc>=50?'w':'c'}"><span class="v">${attempts?acc+"%":"—"}</span><div class="k">accuracy (${attempts} attempts)</div></div>
+    </div>
+    <div class="card">
+      <h3>Practise your repertoire</h3>
+      <p style="font-size:14px">You get a position from one of your lines and have to play the move — no prompts,
+      no arrows. Moves you get right come back at widening intervals; moves you miss come back soon.</p>
+      ${due.length?`<button class="btn pri" id="pracGo">Practise ${due.length} move${due.length>1?"s":""}</button>`
+        :total?`<div class="opnote good">Nothing due right now — everything you've learned is still fresh.
+                 Learn a new line, or come back later.<br><br>
+                 <button class="btn sm" id="pracGo">Practise anyway</button></div>`
+        :`<div class="empty">Walk through a line on <b>Learn</b> first.</div>`}
+    </div>`;
+  const go=$("#pracGo"); if(go)go.onclick=pracStart;
+}
+function renderOpReport(){
+  const el=$("#opReport"); if(!el)return;
+  const st=openingStats();
+  const gl=[...st.w.games,...st.b.games];
+  const tagged=gl.filter(g=>g.opening).length;
+  if(!gl.length){ el.innerHTML=`<div class="empty">Analyse some games first — this report is built from what you actually played.</div>`; return; }
+  if(!tagged){
+    el.innerHTML=`<div class="opnote warn">Your analysed games were saved before opening names were recorded.
+      Hit <b>Analyse my full history</b> in the sidebar to fill them in — nothing gets re-analysed, it just adds the labels.</div>`;
+    return;
+  }
+  const side=(k,label)=>{
+    const o=st[k], n=o.games.length;
+    if(!n)return "";
+    const names=Object.entries(o.names).sort((a,b)=>b[1].n-a[1].n);
+    const distinct=names.length;
+    // bookDepth counts PLIES; everything shown to the reader is in whole moves
+    const plies=o.games.map(bookDepth).filter(d=>d!=null);
+    const IN_BOOK=8;                       // 4 full moves of your repertoire
+    const inBook=plies.filter(d=>d>=IN_BOOK).length;
+    const medPly=plies.length?plies.slice().sort((a,b)=>a-b)[Math.floor(plies.length/2)]:0;
+    const rows=names.slice(0,8).map(([nm,e])=>
+      `<tr><td>${esc(nm)}</td><td class="num">${e.n}</td><td class="num">${Math.round(100*e.win/e.n)}%</td></tr>`).join("");
+    const firsts=Object.entries(o.first).sort((a,b)=>b[1].n-a[1].n);
+    const g_=(k)=>k===1?"game":"games";
+    // Below this, "you play too many different openings" isn't a finding, it's noise
+    const MIN_JUDGE=8;
+    const verdict = n<MIN_JUDGE
+      ? `<div class="opnote"><b>${distinct} different ${distinct===1?"opening":"openings"} in ${n} ${g_(n)}.</b>
+           Too few games to read anything into yet — come back once you've played a few more as ${label}.</div>`
+      : distinct>n*0.6
+        ? `<div class="opnote warn"><b>${distinct} different openings in ${n} games.</b> You almost never play the
+           same thing twice, so you never get a second look at a position. That's the single biggest thing this
+           section is here to fix — pick one line and repeat it until the moves are automatic.</div>`
+        : `<div class="opnote good"><b>${distinct} different openings in ${n} games.</b> Reasonably consistent —
+           you're getting repeat exposure, which is what builds real opening understanding.</div>`;
+    return `<div class="card sect">
+      <h2>As ${label} — ${n} ${g_(n)}</h2>
+      ${verdict}
+      ${firsts.length?`<div class="opnote">First move: ${firsts.map(([m,e])=>
+        `<b>${esc(m)}</b> ×${e.n} (${Math.round(100*e.win/e.n)}% won)`).join(" · ")}</div>`:""}
+      ${plies.length?`<div class="opnote ${inBook?"good":""}">You stayed in your repertoire for at least
+        ${IN_BOOK/2} moves in <b>${inBook} of ${plies.length}</b> ${g_(plies.length)}. Typically you leave it after
+        <b>${Math.floor(medPly/2)} ${Math.floor(medPly/2)===1?"move":"moves"}</b>.</div>`:""}
+      <table class="optable"><tr><th>Opening</th><th style="text-align:right">Games</th><th style="text-align:right">Won</th></tr>${rows}</table>
+    </div>`;
+  };
+  el.innerHTML=side("w","White")+side("b","Black");
+}
+function renderOpenings(){
+  if(!OP)renderStudies();
+  renderPractice();
+  renderOpReport();
+}
+
 /* ---------- rendering ---------- */
 function renderProgress(){
   const A=DB.attempts.filter(a=>!a.skipped);
@@ -1366,9 +2278,14 @@ function renderProgress(){
   const med=(xs)=>{if(!xs.length)return 0;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
   const gl=Object.values(DB.games);
   const totM=gl.reduce((s,g)=>s+g.moves,0), totE=gl.reduce((s,g)=>s+g.errs,0);
+  const byD=attemptsByDrill(), now=Date.now();
+  const st=DB.drills.map(d=>drillState(byD[d.id]));
+  const dueNow=st.filter(x=>now>=x.due).length;
+  const learned=st.filter(x=>x.box>=3).length;      // 3 correct in a row and holding
   $("#statTiles").innerHTML=`
     <div class="tile ${acc>=60?'g':acc>=40?'w':'c'}"><span class="v">${A.length?acc+"%":"—"}</span><div class="k">drill accuracy (${A.length} attempts)</div></div>
-    <div class="tile"><span class="v">${DB.drills.length}</span><div class="k">positions found from your games</div></div>
+    <div class="tile ${dueNow?'w':'g'}"><span class="v">${dueNow}</span><div class="k">due to drill now, of ${DB.drills.length} found</div></div>
+    <div class="tile ${learned?'g':''}"><span class="v">${learned}</span><div class="k">positions holding after 3+ correct in a row</div></div>
     <div class="tile"><span class="v">${totE?("1 per "+(totM/totE).toFixed(1)):"—"}</span><div class="k">moves is a serious error, in real games</div></div>
     <div class="tile"><span class="v">${A.length?med(A.map(a=>a.secs))+"s":"—"}</span><div class="k">median time to solve a drill</div></div>`;
 
@@ -1394,7 +2311,7 @@ function renderProgress(){
     $("#errChart").innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
       <line x1="${PL}" y1="${Y(0)}" x2="${W-PR}" y2="${Y(0)}" stroke="var(--axis)"/>
       <path d="${d}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>
-      ${gs.map((g,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(rate(g)).toFixed(1)}" r="3.6" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>${g.white} v ${g.black}: ${g.errs} in ${g.moves}</title></circle>`).join("")}
+      ${gs.map((g,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(rate(g)).toFixed(1)}" r="3.6" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"><title>${esc(g.white)} v ${esc(g.black)}: ${g.errs} in ${g.moves}</title></circle>`).join("")}
       <text x="2" y="${Y(mx)+4}" fill="var(--muted)" font-size="10">${mx.toFixed(0)}%</text>
       <text x="2" y="${Y(0)+4}" fill="var(--muted)" font-size="10">0%</text>
       <text x="${PL}" y="${H-4}" fill="var(--muted)" font-size="10">older</text>
@@ -1414,6 +2331,13 @@ function renderProgress(){
 }
 function phaseOf(n){return n<=12?0:(n<=30?1:2)}
 function gameReport(g){
+  const k=(g.url||"")+"|"+((g.mlog||[]).length);
+  if(REPORTS.has(k))return REPORTS.get(k);
+  const r=computeReport(g);
+  REPORTS.set(k,r);
+  return r;
+}
+function computeReport(g){
   const M=g.mlog||[];
   if(!M.length)return null;
   const acpl=Math.round(M.reduce((s,m)=>s+m.cpLoss,0)/M.length);
@@ -1485,8 +2409,8 @@ function renderGames(){
     const res=RL[g.result];
     return `<div class="grow">
       <div class="ghead" data-i="${i}">
-        <span class="res ${g.result||'none'}" title="${g.how||'result not recorded for this game'}">${res?res[0]:"–"}</span>
-        <span class="gname">${g.white} v ${g.black}</span>
+        <span class="res ${g.result||'none'}" title="${esc(g.how||'result not recorded for this game')}">${res?res[0]:"–"}</span>
+        <span class="gname">${esc(g.white)} v ${esc(g.black)}</span>
         <span class="gmeta">${g.moves} moves · ${r?r.acpl+" acpl":""} · ${g.errs} serious</span>
         <span class="gchev">▾</span>
       </div>
@@ -1515,7 +2439,7 @@ function gameDetail(g,gi){
   const r=gameReport(g);
   if(!r)return `<div class="empty">This game was analysed before the breakdown existed. Re-sync to fill it in.</div>`;
   const drillBtn=(n)=>{const d=(g.drills||[]).find(x=>x.movenum===n);
-    return d?`<button class="btn sm dl" data-id="${d.id}">Drill this</button>`:""};
+    return d?`<button class="btn sm dl" data-id="${esc(d.id)}">Drill this</button>`:""};
   const RES={win:"You won",loss:"You lost",draw:"Drawn"};
   return `
   ${g.result?`<div class="reshead ${g.result}">${RES[g.result]}${g.how&&g.how!==g.result?` · ${g.how}`:""}</div>`:""}
@@ -1551,7 +2475,7 @@ function gameDetail(g,gi){
           <div class="tprow"><i class="sw3" style="background:${GREEN}"></i>better was <b>${m.bestSan||m.best}</b></div>
           <div class="tpcost">cost ${(m.cpLoss/100).toFixed(1)} pawns${m.wl>=THRESH?` · ${m.wl}% win probability`:""}</div>
           <div class="tptip">${(MOTIF[motifOf(m)]||MOTIF.pos).tip}</div>
-          ${d?`<button class="btn sm dl" data-id="${d.id}" style="margin-top:9px">Drill this</button>`:""}
+          ${d?`<button class="btn sm dl" data-id="${esc(d.id)}" style="margin-top:9px">Drill this</button>`:""}
         </div></div>`;
     }).join("")
       : `<p style="font-size:14px">No single move cost more than a pawn and a bit. Clean game.</p>`}
@@ -1584,7 +2508,7 @@ function wireDrillLinks(){
     $("#noDrills").style.display="none"; $("#drillUI").style.display="block";
     const m=MOTIF[motifOf(d)]||MOTIF.pos;
     $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
-    $("#ctx").innerHTML=`From your game vs <b>${d.vs}</b>, move ${d.movenum}. You played <b>${d.played}</b> here — it'll be marked in red.`;
+    $("#ctx").innerHTML=`From your game vs <b>${esc(d.vs)}</b>, move ${esc(d.movenum)}. You played <b>${esc(d.played)}</b> here — it'll be marked in red.`+drillNote(d);
     $("#fb").innerHTML=""; $("#next").style.display="none"; $("#toggleRes").style.display="none";
     $("#hint").disabled=false; $("#skip").disabled=false;
     setTurnChip(); setLegend();
@@ -1594,7 +2518,15 @@ function wireDrillLinks(){
     window.scrollTo(0,0);
   });
 }
-function renderAll(){renderProgress();renderCapsules();renderGames();if(!cur||!DB.drills.find(d=>d.id===(cur&&cur.id)))startDrill();}
+function renderAll(){renderProgress();renderCapsules();renderGames();renderOpenings();if(!cur||!DB.drills.find(d=>d.id===(cur&&cur.id)))startDrill();}
+// during a long sync, redraw at most every few seconds — the final renderAll()
+// after the loop is what guarantees the page ends up correct
+let lastRender=0;
+function renderSoon(){
+  const now=Date.now();
+  if(now-lastRender<3000)return;
+  lastRender=now; renderAll();
+}
 
 /* ---------- wiring ---------- */
 $$(".tab").forEach(t=>t.onclick=()=>{
@@ -1607,11 +2539,99 @@ $("#exp").onclick=()=>{
   const a=document.createElement("a"); a.href=URL.createObjectURL(b);
   a.download="chess-trainer-progress.json"; a.click();
 };
+// An import replaces everything and is saved immediately, so it gets checked
+// and confirmed first — one malformed file used to be enough to wipe real progress.
+function checkImport(o){
+  if(!o||typeof o!=="object"||Array.isArray(o))return "it isn't a Chess Trainer file";
+  if(o.games!=null&&(typeof o.games!=="object"||Array.isArray(o.games)))return "the games section is malformed";
+  if(o.drills!=null&&!Array.isArray(o.drills))return "the drills section is malformed";
+  if(o.attempts!=null&&!Array.isArray(o.attempts))return "the attempts section is malformed";
+  if(!o.games&&!o.drills)return "there are no games or drills in it";
+  return null;
+}
 $("#imp").onclick=()=>{
-  const i=document.createElement("input"); i.type="file"; i.accept=".json";
-  i.onchange=async()=>{ try{DB=JSON.parse(await i.files[0].text()); save(); renderAll(); }catch(e){alert("Couldn't read that file.")} };
+  const i=document.createElement("input"); i.type="file"; i.accept=".json,application/json";
+  i.onchange=async()=>{
+    const f=i.files&&i.files[0]; if(!f)return;
+    let o;
+    try{ o=JSON.parse(await f.text()); }
+    catch(e){ alert("Couldn't read that file — it isn't valid JSON."); return; }
+    const bad=checkImport(o);
+    if(bad){ alert("Couldn't import that file — "+bad+"."); return; }
+    const ng=Object.keys(o.games||{}).length, nd=(o.drills||[]).length, na=(o.attempts||[]).length;
+    const have=Object.keys(DB.games||{}).length;
+    if(!confirm(`Import ${ng} games, ${nd} drills and ${na} attempts?\n\n`+
+                `This REPLACES what's in this browser now (${have} games). `+
+                `Export first if you want to keep it.`))return;
+    DB=Object.assign({user:"",games:{},drills:[],attempts:[],oattempts:[],stats:null},o,{
+      games:(o.games&&typeof o.games==="object")?o.games:{},
+      drills:Array.isArray(o.drills)?o.drills:[],
+      attempts:Array.isArray(o.attempts)?o.attempts:[],
+      oattempts:Array.isArray(o.oattempts)?o.oattempts:[]
+    });
+    REPORTS.clear(); cur=null; lastRender=0;
+    if(save()){
+      $("#user").value=DB.user||"";
+      applyTheme(DB.theme||"green");
+      buildSetup(); renderAll();
+      stat(`imported ${ng} game${ng===1?"":"s"}`,"new");
+    }
+  };
   i.click();
 };
+
+/* ---------- openings wiring ---------- */
+let opSel=null, prSel=null;
+$$("#opNav .sub").forEach(b=>b.onclick=()=>{
+  $$("#opNav .sub").forEach(x=>x.classList.toggle("on",x===b));
+  $$(".osec").forEach(s=>s.classList.toggle("on",s.id==="o-"+b.dataset.o));
+});
+$("#opExit").onclick=opExit;
+$("#opRestart").onclick=()=>{ if(OP)openStudy(OP.st.id) };
+$("#opBack").onclick=opBack;
+$("#opNext").onclick=()=>{ if(OP)opStep() };
+$("#opShow").onclick=()=>{
+  if(!OP)return;
+  const kids=kidsOf(OP.node); if(!kids.length)return;
+  if(turnOf(OP.g.fen())!==OP.st.color)return;
+  OP.showed=true;
+  const c=kids[0];
+  opDraw({[c.from]:"hint",[c.to]:"hint"},[{from:c.from,to:c.to,color:"#f0a92a"}]);
+  opSay(`The move is <b>${esc(c.san)}</b>. Play it on the board.`,"warn");
+};
+wireBoardInput($("#opBoard"),{
+  enabled:()=>!!OP&&turnOf(OP.g.fen())===OP.st.color&&!!kidsOf(OP.node).length,
+  click:(n)=>{ if(!OP)return;
+    if(opSel){ const legal=OP.g.moves({verbose:true}).some(m=>m.from===opSel&&m.to===n);
+      if(legal){ const f=opSel; opSel=null; opTry(f,n); return; } }
+    const mv=OP.g.moves({verbose:true}).filter(m=>m.from===n);
+    if(!mv.length){ opSel=null; opDraw(); return; }
+    opSel=n; const marks={[n]:"sel"}; mv.forEach(m=>{if(!marks[m.to])marks[m.to]="dotm"}); opDraw(marks);
+  },
+  selected:()=>opSel,
+  legal:(f,t)=>{ try{ return OP.g.moves({verbose:true}).some(m=>m.from===f&&m.to===t) }catch(e){ return false } },
+  commit:(f,t)=>{ opSel=null; opTry(f,t) },
+  cancel:()=>{ opSel=null; opDraw() },
+  redraw:()=>{ if(OP)opDraw() }
+});
+$("#prExit").onclick=()=>{ PR=null; $("#pracRun").style.display="none"; $("#pracIdle").style.display="block"; renderPractice(); };
+$("#prNext").onclick=()=>{ const n=pracPick(); if(n)pracStart(); else $("#prExit").click(); };
+$("#prShow").onclick=()=>{ if(PR&&!PR.answered)prAnswer(null,null,true) };
+wireBoardInput($("#prBoard"),{
+  enabled:()=>!!PR&&!PR.answered,
+  click:(n)=>{ if(!PR||PR.answered)return;
+    if(prSel){ const legal=PR.g.moves({verbose:true}).some(m=>m.from===prSel&&m.to===n);
+      if(legal){ const f=prSel; prSel=null; prAnswer(f,n); return; } }
+    const mv=PR.g.moves({verbose:true}).filter(m=>m.from===n);
+    if(!mv.length){ prSel=null; prDraw(); return; }
+    prSel=n; const marks={[n]:"sel"}; mv.forEach(m=>{if(!marks[m.to])marks[m.to]="dotm"}); prDraw(marks);
+  },
+  selected:()=>prSel,
+  legal:(f,t)=>{ try{ return PR.g.moves({verbose:true}).some(m=>m.from===f&&m.to===t) }catch(e){ return false } },
+  commit:(f,t)=>{ prSel=null; prAnswer(f,t) },
+  cancel:()=>{ prSel=null; prDraw() },
+  redraw:()=>{ if(PR)prDraw() }
+});
 
 /* hook both boards up to click + drag (containers persist across re-renders) */
 wireBoardInput($("#board"),{
@@ -1674,7 +2694,7 @@ $("#wuser").addEventListener("keydown",e=>{if(e.key==="Enter")$("#wgo").click()}
 $("#wskip").onclick=()=>{ DB.user=DB.user||""; DB.skipped=true; save(); $("#welcome").style.display="none"; };
 $("#reset").onclick=()=>{
   if(!confirm("Clear all games, drills and progress from this browser and start fresh?"))return;
-  DB={user:"",games:{},drills:[],attempts:[],stats:null,theme:DB.theme}; save();
+  DB={user:"",games:{},drills:[],attempts:[],oattempts:[],stats:null,theme:DB.theme}; save();
   location.reload();
 };
 
