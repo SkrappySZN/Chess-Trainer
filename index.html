@@ -263,6 +263,36 @@ b{color:var(--ink);font-weight:620}
 .fb .hd{font-weight:640;color:var(--ink);margin-bottom:6px;font-size:var(--t-md);letter-spacing:-.012em}
 /* the pawn figures explain themselves on hover rather than in a footnote */
 .ev{border-bottom:1px dotted var(--muted);cursor:help;font-variant-numeric:tabular-nums}
+/* win probability, three moves side by side — the pawn figure says how much
+   better a move is, this says how much it matters */
+/* The label sits above its bar rather than beside it. This panel is only ~400px
+   wide next to the board, and a label column left the bars too short to compare. */
+.wpchart{margin:14px 0 4px}
+.wprow{margin:11px 0}
+.wphead{display:flex;align-items:baseline;gap:7px;margin-bottom:5px}
+.wphead .wpm{font-size:var(--t-sm);font-weight:640;color:var(--ink);flex:0 0 auto}
+.wphead em{font-style:normal;font-size:var(--t-xs);color:var(--muted);min-width:0;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wphead .wpv{margin-left:auto;font-size:var(--t-sm);color:var(--ink-2);
+ font-variant-numeric:tabular-nums;flex:0 0 auto}
+.wpt{display:block;height:10px;background:var(--surface-3);border-radius:var(--r-f);overflow:hidden}
+.wpt i{display:block;height:100%;border-radius:var(--r-f);
+ transform-origin:left center;animation:barIn var(--d3) var(--ease) both}
+.wpcap{font-size:var(--t-xs);color:var(--muted);margin-top:11px}
+/* step through what happens next, instead of reading a line of notation */
+.lchips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:2px 0 9px}
+.lchip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+ background:var(--surface-3);border:1px solid transparent;color:var(--ink-2);
+ padding:3px 8px;border-radius:var(--r-1);cursor:pointer;
+ transition:background var(--d1) var(--ease-s),color var(--d1) var(--ease-s)}
+.lchip:hover{color:var(--ink);background:var(--axis)}
+.lchip.on{background:var(--s1-solid);color:#fff;border-color:transparent}
+.lchip.num{background:none;color:var(--muted);cursor:default;padding:3px 1px}
+.lchip.num:hover{background:none;color:var(--muted)}
+.lnote{font-size:var(--t-sm);color:var(--ink-2);line-height:1.5;min-height:21px}
+.lnote b{color:var(--ink)}
+.lnav{display:flex;gap:6px;align-items:center;margin-top:10px}
+.lnav .btn{padding:5px 11px;font-size:12.5px}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink-2);
  background:var(--surface-2);padding:8px 11px;border-radius:7px;margin-top:9px}
 .check{background:var(--surface-2);border-radius:10px;padding:13px 15px;margin-top:12px;font-size:13.5px;
@@ -1663,15 +1693,17 @@ async function analyseGame(g,user,onProg){
 const PNAME={p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen",k:"king"};
 // Walk a line of UCI moves, returning numbered SAN and the exact material swing.
 function walkLine(fen,uciList,hero){
-  const g=new Chess(fen), sans=[], V={p:1,n:3,b:3,r:5,q:9};
+  const g=new Chess(fen), sans=[], used=[], fens=[fen], moves=[], V={p:1,n:3,b:3,r:5,q:9};
   let mat=0;
   for(const u of uciList){
     let m; try{ m=g.move({from:u.slice(0,2),to:u.slice(2,4),promotion:'q'}) }catch(e){ break }
     if(!m)break;
-    sans.push(m.san);
+    sans.push(m.san); used.push(u); moves.push(m); fens.push(g.fen());
     if(m.captured) mat += (m.color===hero ? V[m.captured] : -V[m.captured]);
   }
-  return {sans,mat};
+  // fens/moves let the caller replay the line a ply at a time rather than
+  // print it — the positions are already computed here, so keep them
+  return {sans,mat,used,fens,moves};
 }
 function numberLine(fen,sans){
   let n=parseInt(fen.split(" ")[5],10)||1;
@@ -1689,22 +1721,23 @@ async function explainBest(fen,bestUci,hero,prio=PRIO.LIVE){
   const g=new Chess(fen);
   let mv; try{ mv=g.move({from:bestUci.slice(0,2),to:bestUci.slice(2,4),promotion:'q'}) }catch(e){ return null }
   if(!mv)return null;
-  const bits=[];
+  const bits=[]; let lead=null;
   if(mv.captured){
     const back=g.moves({verbose:true}).filter(m=>m.to===mv.to&&m.captured);
-    bits.push(back.length
+    lead=(back.length
       ? `<b>${mv.san}</b> takes the ${PNAME[mv.captured]}, and he takes back with <b>${back[0].san}</b>.`
       : `<b>${mv.san}</b> just wins the ${PNAME[mv.captured]} — nothing can recapture.`);
   } else if(g.in_check()){
-    bits.push(`<b>${mv.san}</b> is check, so he has to answer it before doing anything else.`);
+    lead=`<b>${mv.san}</b> is check, so he has to answer it before doing anything else.`;
   }
-  let line=null;
+  let line=null, walk=null;
   try{
     const r=await analyse(g.fen(),12,prio);
     const uci=[bestUci].concat((r.pv||[]).slice(0,7));
     const w=walkLine(fen,uci,hero);
     if(w.sans.length>1){
       line=numberLine(fen,w.sans);
+      walk=w;
       // Count material only over COMPLETED pairs of moves. A line that stops
       // mid-exchange would otherwise credit you a capture he's about to take back.
       const even=uci.slice(0,uci.length-(uci.length%2));
@@ -1716,7 +1749,120 @@ async function explainBest(fen,bestUci,hero,prio=PRIO.LIVE){
       }
     }
   }catch(e){}
-  return {bits,line};
+  return {lead,bits,line,walk};
+}
+
+/* ---------- comparing the three moves ------------------------------------
+   The pawn figure says how much better one move is than another. This says
+   how much that difference actually matters: at +9 a further pawn changes
+   almost nothing, and in a level position it changes everything. Shown even
+   when you find the move, because "how much was riding on this" is worth
+   seeing either way. */
+function wpChart(d,yourCp,tried,correct,stalled){
+  const P=c=>Math.max(0,Math.min(100,winPct(c)));
+  const bestP=P(d.eb), gameP=P(d.ea);
+  const bf=d.best.slice(0,2), bt=d.best.slice(2,4), ps=playedSquares(d);
+  const wasBest = correct || (tried&&tried.from===bf&&tried.to===bt);
+  const wasGame = tried&&ps&&tried.from===ps[0]&&tried.to===ps[1];
+  const rows=[{san:d.bestSan, lab:wasBest?"the best move — you found it":"the best move",
+               v:bestP, col:"var(--good)"}];
+  if(tried&&!wasBest&&!wasGame&&!stalled)
+    rows.push({san:tried.san, lab:"your try just now", v:P(yourCp), col:"var(--warning)"});
+  rows.push({san:d.played, lab:wasGame?"your move, then and now":"your move in the game",
+             v:gameP, col:"var(--critical)"});
+  const gap=Math.round(bestP-gameP);
+  return `<div class="wpchart">`+rows.map(r=>
+    `<div class="wprow">
+       <div class="wphead"><span class="wpm">${esc(r.san)}</span><em>${r.lab}</em>
+         <span class="wpv">${r.v.toFixed(0)}%</span></div>
+       <span class="wpt"><i style="width:${r.v.toFixed(0)}%;background:${r.col}"></i></span>
+     </div>`).join("")+
+    `<div class="wpcap">Your chance of winning from here, by the engine's reckoning.${
+      gap>=1?` Playing <b>${esc(d.played)}</b> in the game handed over <b>${gap} point${gap===1?"":"s"}</b> of it.`
+            :` Both moves keep about the same chances — this one was close.`}</div></div>`;
+}
+
+/* ---------- what happens next --------------------------------------------
+   A principal variation printed as notation is the single most opaque thing
+   the engine produces, and it's exactly where "that's just an engine move"
+   comes from. Same line, but you step through it on the board with a sentence
+   per move saying what that move is for. */
+let LINE=null;
+// The biggest thing this piece now attacks from its new square. Turn has to be
+// flipped back to the mover, since it's the opponent's move in the position.
+function biggestHit(fenAfter,sq,color){
+  try{
+    const t=new Chess(setTurn(fenAfter,color));
+    let best=null;
+    for(const m of t.moves({verbose:true}))
+      if(m.from===sq&&m.captured&&(!best||VAL[m.captured]>VAL[best]))best=m.captured;
+    return best&&VAL[best]>=3?best:null;
+  }catch(e){ return null }
+}
+// A quiet move has nothing concrete to report, and a line can contain several.
+// Varying the wording by ply keeps the same sentence from repeating four times.
+const QUIET_MINE=["quiet, but it puts the piece where it wants to be.",
+  "no fireworks — it just improves the piece.",
+  "a strengthening move: nothing forced, better placed.",
+  "quiet again, taking the square before he can use it."];
+const QUIET_HIS=["his best try.","the best he has.","nothing better available to him.",
+  "he holds on as well as he can."];
+function plyNote(fenBefore,mv,fenAfter,hero,i){
+  const mine=mv.color===hero, who=mine?"you":"he";
+  const v=(a,b)=>mine?a:b;                       // you take / he takes
+  const head=`<b>${esc(mv.san)}</b> — `;
+  if(/[kq]/.test(mv.flags))
+    return head+`${who} ${v("castle","castles")}: king tucked away, rook joins the game.`;
+  const acts=[];
+  if(mv.captured)acts.push(`${v("take","takes")} the ${PNAME[mv.captured]}`);
+  if(mv.promotion)acts.push(`${v("promote","promotes")} to a queen`);
+  const hit=biggestHit(fenAfter,mv.to,mv.color);
+  if(hit&&!mv.captured)acts.push(`${v("hit","hits")} the ${PNAME[hit]}`);
+  let check=false;
+  try{ check=new Chess(fenAfter).in_check() }catch(e){}
+  if(acts.length){
+    let s=`${who} ${acts.join(" and ")}`;
+    if(check)s+=mine?", with check — he has to answer it before anything else":", with check";
+    return head+s.charAt(0).toUpperCase()+s.slice(1)+".";
+  }
+  if(check)return head+(mine
+    ? "check, so he has to answer it before doing anything else."
+    : "he checks you, so this one is forced.");
+  return head+(mine?QUIET_MINE[(i>>1)%QUIET_MINE.length]:QUIET_HIS[(i>>1)%QUIET_HIS.length]);
+}
+function buildLine(fen,walk,hero){
+  if(!walk||walk.sans.length<2)return null;
+  const notes=walk.moves.map((m,i)=>plyNote(walk.fens[i],m,walk.fens[i+1],hero,i));
+  return {fen0:fen,sans:walk.sans,fens:walk.fens,moves:walk.moves,notes,i:0,hero};
+}
+function renderLine(){
+  const box=$("#lineplay"); if(!box||!LINE)return;
+  const white=LINE.fen0.split(" ")[1]==="w";
+  let n=parseInt(LINE.fen0.split(" ")[5],10)||1;
+  const chips=[];
+  LINE.sans.forEach((s,i)=>{
+    const isW=white?i%2===0:i%2===1;
+    if(isW)chips.push(`<span class="lchip num">${n}.</span>`);
+    else if(i===0)chips.push(`<span class="lchip num">${n}…</span>`);
+    chips.push(`<button class="lchip${LINE.i===i+1?" on":""}" data-ply="${i+1}">${esc(s)}</button>`);
+    if(!isW)n++;
+  });
+  box.innerHTML=`<div class="lchips">${chips.join("")}</div>
+    <div class="lnote">${LINE.i?LINE.notes[LINE.i-1]:"The position you were given. Step through to see where the move leads."}</div>
+    <div class="lnav">
+      <button class="btn" id="lprev" ${LINE.i?"":"disabled"}>‹</button>
+      <button class="btn" id="lnext" ${LINE.i<LINE.sans.length?"":"disabled"}>${LINE.i?"›":"Play it out ›"}</button>
+      <button class="btn" id="lreset" ${LINE.i?"":"disabled"}>Back to start</button>
+    </div>`;
+  $$("#lineplay [data-ply]").forEach(b=>b.onclick=()=>stepLine(+b.dataset.ply));
+  $("#lprev").onclick=()=>stepLine(LINE.i-1);
+  $("#lnext").onclick=()=>stepLine(LINE.i+1);
+  $("#lreset").onclick=()=>stepLine(0);
+}
+function stepLine(i){
+  if(!LINE)return;
+  LINE.i=Math.max(0,Math.min(LINE.sans.length,i));
+  renderLine(); showAnswerBoard();
 }
 
 /* ---------- drilling ---------- */
@@ -1829,7 +1975,8 @@ function setLegend(){
   $("#legend").innerHTML=bits.join("");
 }
 function startDrill(){
-  cur=pickDrill(); answered=false; sel=null; started=false; viewResult=false; lastTry=null; clearUser("board");
+  cur=pickDrill(); answered=false; sel=null; started=false; viewResult=false; lastTry=null;
+  LINE=null; clearUser("board");
   renderFocus();
   if(!cur){
     if(FOCUS)$("#noDrills").innerHTML=`Nothing left to drill for <b>${esc((LEAKS[FOCUS]||{}).label||FOCUS)}</b>.
@@ -1946,16 +2093,21 @@ async function submit(from,to){
         : stalled? `The engine couldn't grade <b>${esc(mv.san)}</b> in time, so this one isn't scored — but <b>${esc(cur.bestSan)}</b> was the move here.`
         : `You played <b>${esc(mv.san)}</b>, which leaves you ${evPhrase(yourCp)}. `+
           `<b>${esc(cur.bestSan)}</b> keeps you ${evPhrase(cur.eb)}.`}
+      ${wpChart(cur,yourCp,lastTry,correct,stalled)}
       <div id="why" class="whybox">working out why…</div>
-      ${!correct?`<div class="mono">In the real game you played ${esc(cur.played)} here and it cost you ${cur.drop}% of your winning chances.</div>`:''}
     </div>`;
+  LINE=null;
   explainBest(cur.fen,cur.best,cur.hero).then(x=>{
     const box=$("#why"); if(!box)return;
     if(!x){box.innerHTML=m.tip;return}
+    LINE=buildLine(cur.fen,x.walk,cur.hero);
     box.innerHTML =
-      (x.line?`<div class="whyline"><span>the idea</span>${x.line}</div>`:"")+
+      (LINE?`<div id="lineplay"></div>`
+           :(x.line?`<div class="whyline"><span>the idea</span>${x.line}</div>`:"")+
+            (x.lead?`<p>${x.lead}</p>`:""))+
       x.bits.map(b=>`<p>${b}</p>`).join("")+
       `<p class="whytip">${m.tip}</p>`;
+    if(LINE)renderLine();
   });
   $("#next").style.display="inline-block"; $("#hint").disabled=true; $("#skip").disabled=true;
   // an ungraded attempt is recorded as a skip, so it neither counts against your
@@ -1965,6 +2117,13 @@ async function submit(from,to){
   save(); renderProgress();
 }
 function showAnswerBoard(){
+  // stepping through the continuation takes precedence over both other views
+  if(LINE&&LINE.i>0){
+    const m=LINE.moves[LINE.i-1], M={};
+    M[m.from]="ok"; M[m.to]="ok";
+    drawBoard(M,LINE.fens[LINE.i],[{from:m.from,to:m.to,color:m.color===cur.hero?GREEN:RED}]);
+    return;
+  }
   if(viewResult){
     const t=new Chess(cur.fen);
     t.move({from:cur.best.slice(0,2),to:cur.best.slice(2,4),promotion:'q'});
@@ -1986,6 +2145,8 @@ function showAnswerBoard(){
   }
 }
 $("#toggleRes").onclick=()=>{ if(!answered)return;
+  // stepping wins over this view, so leaving the line is part of switching
+  if(LINE&&LINE.i){ LINE.i=0; renderLine(); }
   viewResult=!viewResult; $("#toggleRes").textContent=viewResult?"Back to comparison":"Show result";
   showAnswerBoard(); };
 $("#hint").onclick=()=>{ if(!cur||answered)return;
