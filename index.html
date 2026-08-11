@@ -261,6 +261,8 @@ b{color:var(--ink);font-weight:620}
  border-left:3px solid var(--axis);background:var(--surface-2);color:var(--ink-2)}
 .fb.ok{border-left-color:var(--good)}.fb.bad{border-left-color:var(--critical)}
 .fb .hd{font-weight:640;color:var(--ink);margin-bottom:6px;font-size:var(--t-md);letter-spacing:-.012em}
+/* the pawn figures explain themselves on hover rather than in a footnote */
+.ev{border-bottom:1px dotted var(--muted);cursor:help;font-variant-numeric:tabular-nums}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--ink-2);
  background:var(--surface-2);padding:8px 11px;border-radius:7px;margin-top:9px}
 .check{background:var(--surface-2);border-radius:10px;padding:13px 15px;margin-top:12px;font-size:13.5px;
@@ -1922,7 +1924,19 @@ async function submit(from,to){
   viewResult=false; setLegend(); showAnswerBoard();
   $("#toggleRes").style.display="inline-block"; $("#toggleRes").textContent="Show result";
   const m=MOTIF[motifOf(cur)]||MOTIF.pos;
-  const ev=(c)=>(c>=MATECAP?"winning":c<=-MATECAP?"lost":(c>0?"+":"")+(c/100).toFixed(1));
+  // Two different scales end up in this box — the engine's evaluation in pawns,
+  // and win probability as a percentage — so each says which it is. Naming the
+  // unit once per sentence is enough; repeating it on every figure reads as noise.
+  // A real minus sign rather than a hyphen — it matches the + in width, so the
+  // two figures line up against each other.
+  const ev=(c)=>(c>=MATECAP?"winning":c<=-MATECAP?"lost"
+    :((c>0?"+":"")+(c/100).toFixed(1)).replace("-","−"));
+  const EVTIP="The engine's verdict on the whole position, in pawns, from your side. "+
+    "+1.0 is as good as being a pawn up; around ±3 is usually winning. It weighs king safety "+
+    "and piece activity too, so it isn't only about material.";
+  // A forced mate has no sensible pawn figure, so those read as words instead.
+  const evPhrase=(c)=>c>=MATECAP?"<b>winning</b>":c<=-MATECAP?"<b>lost</b>"
+    :`at <b class="ev" title="${EVTIP}">${ev(c)} pawns</b>`;
   $("#fb").innerHTML=
     `<div class="fb ${correct?'ok':'bad'}">
       <div class="hd">${correct?'Correct — '+esc(mv.san)
@@ -1930,9 +1944,10 @@ async function submit(from,to){
         :'Not quite. The move was '+esc(cur.bestSan)}</div>
       ${correct? `You found it in ${secs} seconds.`
         : stalled? `The engine couldn't grade <b>${esc(mv.san)}</b> in time, so this one isn't scored — but <b>${esc(cur.bestSan)}</b> was the move here.`
-        : `You played <b>${esc(mv.san)}</b> (${ev(yourCp)}). <b>${esc(cur.bestSan)}</b> keeps ${ev(cur.eb)}.`}
+        : `You played <b>${esc(mv.san)}</b>, which leaves you ${evPhrase(yourCp)}. `+
+          `<b>${esc(cur.bestSan)}</b> keeps you ${evPhrase(cur.eb)}.`}
       <div id="why" class="whybox">working out why…</div>
-      ${!correct?`<div class="mono">In the real game you played ${esc(cur.played)} here and it cost you ${cur.drop} points of win probability.</div>`:''}
+      ${!correct?`<div class="mono">In the real game you played ${esc(cur.played)} here and it cost you ${cur.drop}% of your winning chances.</div>`:''}
     </div>`;
   explainBest(cur.fen,cur.best,cur.hero).then(x=>{
     const box=$("#why"); if(!box)return;
