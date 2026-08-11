@@ -5,6 +5,11 @@ engine over every move you played, and turns the ones you got wrong into drills.
 
 **Live:** https://skrappyszn.github.io/Chess-Trainer/
 
+- **Coach** — the landing page, and the only one that tells you what to do next. One
+  thing to work on, the two numbers that move before your rating does (pieces you give
+  away per 100 moves, and how much offered material you actually take), and a route
+  through them in order — openings are deliberately last. Plus a two-minute board-scan
+  warm-up built from your own positions that needs no engine
 - **Train** — positions from your own games where you missed something, resurfaced
   on a spaced-repetition schedule: get one right and it moves out to a longer
   interval, miss it and it comes back soon

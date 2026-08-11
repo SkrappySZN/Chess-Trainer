@@ -231,6 +231,58 @@ td{color:var(--ink-2)}td:first-child{color:var(--ink)}
 .barrow .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12.5px}
 .empty{color:var(--muted);font-size:14px;padding:26px 0;text-align:center}
 
+/* ---- coach ---- */
+.today{background:linear-gradient(180deg,var(--surface) 0%,var(--surface-2) 100%);
+ border:1px solid var(--hair);border-radius:16px;padding:26px 28px;margin-bottom:16px}
+.today .eyebrow{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--s1);
+ font-weight:650;margin-bottom:10px}
+.today h2{margin:0 0 10px;font-size:26px;letter-spacing:-.025em;line-height:1.2;border:0;padding:0}
+.today p{margin:0;font-size:15px;color:var(--ink-2);line-height:1.6;max-width:64ch}
+.today .row{margin-top:20px}
+.goal{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:760px){.goal{grid-template-columns:1fr}}
+.gcard{background:var(--surface);border:1px solid var(--hair);border-radius:13px;padding:18px 20px}
+.gcard .gk{font-size:12.5px;color:var(--muted);margin-bottom:10px}
+.gcard .gv{font-size:34px;font-weight:640;letter-spacing:-.035em;line-height:1;
+ font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:7px}
+.gcard .gv small{font-size:14px;font-weight:500;color:var(--muted);letter-spacing:0}
+.gmeter{height:7px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin:14px 0 8px;position:relative}
+.gmeter i{display:block;height:100%;border-radius:4px;transition:width .8s cubic-bezier(.22,1,.36,1)}
+.gmeter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-2);opacity:.55;border-radius:2px}
+.gfoot{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.gfoot em{font-style:normal;color:var(--ink-2)}
+.stage{display:grid;grid-template-columns:26px 1fr auto;gap:14px;align-items:start;
+ padding:15px 0;border-bottom:1px solid var(--hair)}
+.stage:last-child{border-bottom:0}
+.stage .sdot{width:20px;height:20px;border-radius:50%;border:2px solid var(--axis);margin-top:2px;
+ display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--plane);font-weight:700}
+.stage.done .sdot{background:var(--good);border-color:var(--good)}
+.stage.now .sdot{border-color:var(--s1);box-shadow:0 0 0 4px rgba(57,135,229,.16)}
+.stage h4{margin:0 0 4px;font-size:15.5px;font-weight:620;color:var(--ink)}
+.stage.locked h4,.stage.locked .sdesc{color:var(--muted)}
+.stage .sdesc{font-size:13.5px;color:var(--ink-2);line-height:1.55;max-width:64ch;margin:0}
+.stage .sgate{font-size:12px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.stage.now{background:linear-gradient(90deg,rgba(57,135,229,.06),transparent 60%);
+ margin:0 -12px;padding-left:12px;padding-right:12px;border-radius:10px}
+@media(max-width:700px){.stage{grid-template-columns:22px 1fr}.stage .act{grid-column:2}}
+/* board scan trainer */
+.scanwrap{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.scanwrap>div:first-child{width:clamp(260px,min(52vw,calc(100vh - 300px)),560px);flex:0 0 auto}
+.scanwrap>div:last-child{flex:1 1 320px;min-width:280px}
+.sq.pick::after{content:"";position:absolute;inset:0;z-index:1;background:#f6f669;opacity:.5}
+.sq.miss::after{content:"";position:absolute;inset:0;z-index:1;background:#e04b4b;opacity:.5}
+.sq.got::after{content:"";position:absolute;inset:0;z-index:1;background:#48c14a;opacity:.5}
+.scanq{font-size:17px;font-weight:600;color:var(--ink);margin:0 0 8px;line-height:1.35}
+.scanscore{display:flex;gap:18px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;
+ margin-bottom:14px}
+.scanscore b{color:var(--ink);font-weight:640}
+@keyframes cntup{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.gcard .gv,.today h2{animation:cntup .45s cubic-bezier(.22,1,.36,1) both}
+@media(prefers-reduced-motion:reduce){
+  .gcard .gv,.today h2{animation:none}
+  .gmeter i{transition:none}
+}
+
 /* ---- weaknesses ---- */
 .leak{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:start;
  padding:16px 0;border-bottom:1px solid var(--hair)}
@@ -334,7 +386,8 @@ ul.bul li{margin:7px 0}
 <aside class="rail">
   <div class="brand"><h1>Chess Trainer</h1><div class="who" id="who">loading…</div></div>
   <div class="tabs">
-    <button class="tab on" data-v="train">Train</button>
+    <button class="tab on" data-v="coach">Coach</button>
+    <button class="tab" data-v="train">Train</button>
     <button class="tab" data-v="play">Play</button>
     <button class="tab" data-v="weak">Weaknesses</button>
     <button class="tab" data-v="prog">Progress</button>
@@ -383,8 +436,16 @@ ul.bul li{margin:7px 0}
 </div>
 
 
+<!-- ================= COACH ================= -->
+<div class="view on" id="v-coach">
+  <div id="coachBody">
+    <div class="card empty">Load your games and I'll work out what to put in front of you.</div>
+  </div>
+  <div id="scanUI" style="display:none"></div>
+</div>
+
 <!-- ================= TRAIN ================= -->
-<div class="view on" id="v-train">
+<div class="view" id="v-train">
   <div class="focusbar" id="focusBar" style="display:none"></div>
   <div id="noDrills" class="card empty">
     No drills yet. Hit <b>Analyse my full history</b> in the sidebar — it pulls your chess.com games
@@ -599,6 +660,11 @@ const FILES="abcdefgh", GLYPH={k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
 const CDN_CHESS="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js";
 const CDN_SF="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js";
 const DEPTH=12, THRESH=15;           // win% drop that counts as a "serious" error
+// How many new games one press of "Analyse my full history" will take on. Set
+// by what localStorage holds rather than by patience: past roughly this many,
+// saving starts throwing away move logs to make room.
+const MAX_ANALYSE=400;
+const MAX_DRILLS=2000;               // the other thing that grows without limit
 const VAL={p:1,n:3,b:3,r:5,q:9,k:0};
 
 /* ---------- text safety ----------
@@ -634,8 +700,12 @@ function pruneOldest(){
   gl.slice(0,n).forEach(g=>{ g.mlog=[]; g.trimmed=true; });
   return n;
 }
+// Pruning mutates DB, so a prune that still ends in failure used to leave the
+// user holding a gutted database *and* an unsaved one — and the banner's advice
+// to export first then produced a file with no move logs left in it. Take a
+// snapshot, and put it back if we never manage to save.
 function save(){
-  let trimmed=0;
+  let trimmed=0, snapshot=null;
   for(;;){
     try{
       localStorage.setItem(KEY,JSON.stringify(DB));
@@ -643,13 +713,21 @@ function save(){
       warnStore(trimmed?`Storage was full — the move-by-move detail for your ${trimmed} oldest game${trimmed>1?"s":""} was dropped to make room. Totals and drills are intact. Export if you want to keep the rest.`:"");
       return true;
     }catch(e){
-      const n=pruneOldest();
+      if(snapshot===null){ try{ snapshot=JSON.stringify(DB) }catch(_){ snapshot="" } }
+      let n=pruneOldest();
+      // Move logs aren't the only thing that grows without limit — a long
+      // history carries thousands of drills, and past a point they're the
+      // whole problem. Keep the most recent, which are the ones being drilled.
+      if(!n&&DB.drills.length>MAX_DRILLS){
+        DB.drills=DB.drills.slice(-MAX_DRILLS); n=1;
+      }
       if(!n){
         storageFull=true;
+        if(snapshot){ try{ DB=JSON.parse(snapshot) }catch(_){} }
         warnStore("Browser storage is full and nothing is being saved. Export your progress, then use Start fresh.");
         return false;
       }
-      trimmed+=n; REPORTS.clear(); LEAKCACHE.clear();
+      trimmed+=n; REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear();
     }
   }
 }
@@ -1296,6 +1374,18 @@ async function sync(auto){
     }
     games=games.filter(g=>g.rules==="chess").sort((a,b)=>b.end_time-a.end_time);
     if(auto)games=games.slice(0,10);
+    // A full history is unbounded — someone with three years of blitz has
+    // thousands of games, which is days of engine time from one button press
+    // and more than localStorage can hold anyway. Take the most recent slice,
+    // say so, and let a second run pick up where this one stopped.
+    else{
+      const already=games.filter(g=>DB.games[g.url]).length;
+      if(games.length>already+MAX_ANALYSE){
+        const total=games.length;
+        games=games.slice(0,already+MAX_ANALYSE);
+        log(`you have ${total} games — taking the most recent ${games.length}. Run this again for the next batch.`);
+      }
+    }
     // games we already have: refresh the result/ratings from the API without re-analysing
     let filled=0;
     for(const g of games){
@@ -1337,7 +1427,13 @@ async function sync(auto){
       const rec=await analyseGame(g,user,(f)=>{
         $("#pbar").style.width=Math.round(((done+f)/games.length)*100)+"%";
       });
-      if(rec){DB.games[g.url]=rec; DB.drills=DB.drills.concat(rec.drills); save(); renderSoon();}
+      if(rec){
+        DB.games[g.url]=rec; DB.drills=DB.drills.concat(rec.drills);
+        // Nothing can be stored any more, so every further game is engine time
+        // spent on a result that gets thrown away. Stop and say so.
+        if(!save()){ log("storage is full — stopping here so nothing else is wasted"); break; }
+        renderSoon();
+      }
       done++; $("#pbar").style.width=Math.round((done/games.length)*100)+"%";
     }
     log("done.");
@@ -1911,12 +2007,21 @@ function buildSetup(){
   const thin=thinEras(), note=$("#eraNote");
   if(note){
     const analysed=Object.values(DB.games).some(g=>g.mlog&&g.mlog.length);
+    // Buckets only take rated rapid and blitz. Someone who plays nothing but
+    // bullet or daily used to get an empty note here — the very silence this
+    // block exists to prevent.
+    const excluded=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length&&
+      (g.rated===false||(g.cls!=="rapid"&&g.cls!=="blitz"))).length;
     note.innerHTML = !analysed
       ? `Analyse your history and each year you played enough becomes an opponent here.`
       : thin.length
         ? `No bot for ${thin.map(t=>`<b>${esc(t.label)}</b> (${t.moves} move${t.moves===1?"":"s"} analysed)`).join(", ")} — `+
           `needs ${MIN_ERA_MOVES}+ to be anything more than a guess.`
-        : ``;
+        : excluded
+          ? `These are built from rated rapid and blitz only, so the months compare fairly. `+
+            `Your ${excluded} analysed game${excluded===1?" is":"s are"} bullet, daily or unrated — `+
+            `play some rated rapid and a bot will appear here.`
+          : ``;
   }
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
@@ -2109,7 +2214,7 @@ async function reviewGame(){
     wr:0,br:0,end:Math.floor(Date.now()/1000),isWhite:hero==="w",
     moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:g0.result||"",how:g0.result||""};
   g0.mlog=mlog;
-  DB.drills=DB.drills.concat(drills); REPORTS.clear(); LEAKCACHE.clear(); save(); renderProgress(); renderGames();
+  DB.drills=DB.drills.concat(drills); REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear(); save(); renderProgress(); renderGames();
   const med=g0.times.length?g0.times.slice().sort((a,b)=>a-b)[Math.floor(g0.times.length/2)]:0;
   buildReview(mlog,med,hero);
 }
@@ -2688,12 +2793,20 @@ function renderProgress(){
 
   const s=DB.stats;
   if(s){
-    const rows=[["Rapid","chess_rapid"],["Blitz","chess_blitz"],["Bullet","chess_bullet"]]
-      .filter(([,k])=>s[k]).map(([n,k])=>`<tr><td>${n}</td><td>${s[k].last.rating}</td>
-        <td>${s[k].record.win}W ${s[k].record.loss}L ${s[k].record.draw}D</td></tr>`).join("");
-    $("#ratings").innerHTML=`<table><tr><th>Format</th><th>Rating</th><th>Record</th></tr>${rows}
-      ${s.tactics&&s.tactics.highest?`<tr><td>Puzzles (best)</td><td>${s.tactics.highest.rating}</td><td></td></tr>`:""}</table>`;
-    $("#who").textContent=`${DB.user} · rapid ${s.chess_rapid?s.chess_rapid.last.rating:"?"} · puzzles ${s.tactics&&s.tactics.highest?s.tactics.highest.rating:"?"}`;
+    // Show whichever formats this player actually has. Naming rapid in the
+    // header regardless meant a bullet player read "rapid ?" next to their
+    // name and no sign of the rating they actually care about.
+    const FMT=[["Rapid","chess_rapid"],["Blitz","chess_blitz"],["Bullet","chess_bullet"],["Daily","chess_daily"]];
+    const have=FMT.filter(([,k])=>s[k]&&s[k].last);
+    const rows=have.map(([n,k])=>`<tr><td>${n}</td><td>${s[k].last.rating}</td>
+        <td>${s[k].record?`${s[k].record.win}W ${s[k].record.loss}L ${s[k].record.draw}D`:""}</td></tr>`).join("");
+    $("#ratings").innerHTML=rows||s.tactics
+      ?`<table><tr><th>Format</th><th>Rating</th><th>Record</th></tr>${rows}
+        ${s.tactics&&s.tactics.highest?`<tr><td>Puzzles (best)</td><td>${s.tactics.highest.rating}</td><td></td></tr>`:""}</table>`
+      :`<div class="empty">chess.com didn't return any ratings for this account.</div>`;
+    const bits=have.slice(0,2).map(([n,k])=>`${n.toLowerCase()} ${s[k].last.rating}`);
+    if(s.tactics&&s.tactics.highest)bits.push(`puzzles ${s.tactics.highest.rating}`);
+    $("#who").textContent=[DB.user,...bits].join(" · ");
   }
 }
 function phaseOf(n){return n<=12?0:(n<=30?1:2)}
@@ -2744,8 +2857,14 @@ function computeReport(g){
 }
 function renderCapsules(){
   const caps=capsules(), el=$("#capsules"); if(!el)return;
-  if(caps.length<1){ el.innerHTML=`<div class="empty">Analyse your history and each month with enough
-    games turns into a version of you that you can play against.</div>`; return; }
+  if(caps.length<1){
+    const analysed=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length).length;
+    el.innerHTML=`<div class="empty">${analysed
+      ? `This only counts rated rapid and blitz, so the months compare fairly — and none of your
+         ${analysed} analysed game${analysed===1?"":"s"} qualifies yet.`
+      : `Analyse your history and each month with enough games turns into a version of you
+         that you can play against.`}</div>`;
+    return; }
   const mx=Math.max(...caps.map(c=>c.acpl),1);
   const first=caps[0], last=caps[caps.length-1];
   const better = caps.length>1 && last.acpl<first.acpl;
@@ -2778,7 +2897,8 @@ function renderGames(){
       <div class="ghead" data-i="${i}">
         <span class="res ${g.result||'none'}" title="${esc(g.how||'result not recorded for this game')}">${res?res[0]:"–"}</span>
         <span class="gname">${esc(g.white)} v ${esc(g.black)}</span>
-        <span class="gmeta">${g.moves} moves · ${r?r.acpl+" acpl":""} · ${g.errs} serious</span>
+        <span class="gmeta">${[`${g.moves} moves`,r?`${r.acpl} acpl`:g.trimmed?"detail trimmed":null,
+          `${g.errs} serious`].filter(Boolean).join(" · ")}</span>
         <span class="gchev">▾</span>
       </div>
       <div class="gbody" id="gb${i}"></div>
@@ -2885,6 +3005,307 @@ function wireDrillLinks(){
     window.scrollTo(0,0);
   });
 }
+/* ---------- the coach ---------------------------------------------------
+   Two numbers decide games at this level, and they are the same skill seen
+   from both sides: what you hand over, and what you pick up. Both are
+   measured from real games — drills are the training, these are the result.
+
+   The targets are not a rating estimate, because there's no honest way to
+   compute one from a player's own games. They're set where you'd be clearly
+   better than the field you're actually beating and losing to. */
+const COACH_WIN=20;                      // games in the rolling window
+const T_HANG=4, T_CONV=75;               // targets: per 100 moves, and %
+const B_HANG=12, B_CONV=45;              // where a meter starts from
+
+const COACHCACHE=new Map();
+function gameCoach(g){
+  const key=(g.url||"")+"|"+((g.mlog||[]).length);
+  if(COACHCACHE.has(key))return COACHCACHE.get(key);
+  let moves=0,hangs=0,avail=0,took=0,mateMiss=0;
+  (g.mlog||[]).forEach(m=>{
+    if(!m.fen||!m.from||!m.to)return;
+    let b; try{ b=new Chess(m.fen) }catch(e){ return }
+    moves++;
+    // was there material sitting there for you, and did you take it?
+    const mine=bestGrab(b);
+    if(mine.v>=3){
+      avail++;
+      const legal=b.moves({verbose:true}).find(x=>x.from===m.from&&x.to===m.to);
+      if(legal&&legal.captured&&seeCapture(b,legal)>=mine.v)took++;
+    }
+    if(m.eb>=MATECAP&&!m.top&&mateIn1(b))mateMiss++;
+    if(!b.move({from:m.from,to:m.to,promotion:'q'}))return;
+    // ...and did you hand a piece over, while the game was still worth playing?
+    if(!b.game_over()&&m.eb>-600&&bestGrab(b).v>=3)hangs++;
+  });
+  const r={moves,hangs,avail,took,mateMiss};
+  COACHCACHE.set(key,r);
+  return r;
+}
+const coachGames=()=>Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length)
+  .sort((a,b)=>(a.end||0)-(b.end||0));
+function sumCoach(gs){
+  const t={games:gs.length,moves:0,hangs:0,avail:0,took:0,mateMiss:0};
+  gs.forEach(g=>{const c=gameCoach(g);
+    t.moves+=c.moves; t.hangs+=c.hangs; t.avail+=c.avail; t.took+=c.took; t.mateMiss+=c.mateMiss});
+  t.hangRate=t.moves?100*t.hangs/t.moves:null;
+  t.convRate=t.avail>=8?100*t.took/t.avail:null;   // too few chances to be a rate
+  return t;
+}
+// Your own best stretch, which is a nearer and more motivating bar than the
+// target — and unlike the target it can't be argued with.
+function bestWindow(gs,pick,lower){
+  if(gs.length<COACH_WIN)return null;
+  let best=null;
+  for(let i=0;i+COACH_WIN<=gs.length;i++){
+    const v=pick(sumCoach(gs.slice(i,i+COACH_WIN)));
+    if(v==null)continue;
+    if(best==null||(lower?v<best:v>best))best=v;
+  }
+  return best;
+}
+
+// Ordered on purpose. Each stage stays in your way until its number moves,
+// which is the whole point — openings are last because at this level nobody
+// punishes an opening inaccuracy and everybody punishes a hanging knight.
+const STAGES=[
+  {k:"give",title:"Stop giving pieces away",
+   d:"Games here are decided by who hands over the last piece. Before you commit to a move, ask what he can take if you play it. Nothing else you learn will pay as well as this.",
+   gate:s=>s.hangRate!=null&&s.hangRate<=6,
+   at:s=>s.hangRate==null?"not enough games yet":`giving a piece away ${s.hangRate.toFixed(1)} times per 100 moves — this clears at 6`,
+   go:[{scan:"def",label:"Board scan · 2 min"},{leak:"hangP",label:"Drill the misses"}]},
+  {k:"take",title:"Take what you're given",
+   d:"Your opponents hang pieces at least as often as you do. Half the rating between here and 1000 is just noticing and taking it. Look at his loose pieces before you look for anything clever.",
+   gate:s=>s.convRate!=null&&s.convRate>=65,
+   at:s=>s.convRate==null?"not enough chances yet":`taking offered material ${s.convRate.toFixed(0)}% of the time — this clears at 65%`,
+   go:[{scan:"att",label:"Board scan · 2 min"},{leak:"missFree",label:"Drill the misses"}]},
+  {k:"finish",title:"Finish the games you've already won",
+   d:"Winning positions still have to be converted. In a winning position, look at every check you have before anything else — mate is always a check, so that's the entire search.",
+   gate:s=>s.moves>0&&s.mateMiss<=1,
+   at:s=>`${s.mateMiss} missed mate${s.mateMiss===1?"":"s"} in one in your last ${s.games} games — this clears at 1 or fewer`,
+   go:[{leak:"missM",label:"Drill missed mates"}]},
+  {k:"quiet",title:"Have a plan when nothing is forced",
+   d:"When you're in check or recapturing, you play fine — it's the quiet positions where you drift. This is where you learn what to do when no move is obvious: improve your worst-placed piece, or take space you can hold.",
+   gate:s=>s.hangRate!=null&&s.convRate!=null&&s.hangRate<=T_HANG&&s.convRate>=T_CONV,
+   at:s=>`unlocks once you're under ${T_HANG} giveaways per 100 and over ${T_CONV}% conversion`,
+   go:[{leak:"pos",label:"Drill quiet positions"}]},
+  {k:"open",title:"Openings — principles first, then one line each way",
+   d:"Not yet, and that's the point. Until the numbers above are handled, an opening repertoire is memorising the first ten moves of games you'll lose on move twenty. When you get here, it's four principles and one line as each colour, chosen from what you already play.",
+   gate:()=>false,
+   at:()=>"the last thing to study, not the first",
+   go:[{tab:"open",label:"Look anyway"}]}
+];
+function currentStage(s){
+  for(let i=0;i<STAGES.length;i++)if(!STAGES[i].gate(s))return i;
+  return STAGES.length-1;
+}
+
+function meter(cur,target,base,lower,label,best,unit){
+  const pct=cur==null?0:Math.max(0,Math.min(100,100*(lower?(base-cur)/(base-target):(cur-base)/(target-base))));
+  const good=cur!=null&&(lower?cur<=target:cur>=target);
+  const col=good?"var(--good)":pct>=55?"var(--warning)":"var(--critical)";
+  return `<div class="gcard">
+    <div class="gk">${label}</div>
+    <div class="gv">${cur==null?"—":cur.toFixed(unit==="%"?0:1)}<small>${cur==null?"not enough games yet":unit}</small></div>
+    <div class="gmeter"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></div>
+    <div class="gfoot"><span>${best!=null?`your best 20: <em>${best.toFixed(unit==="%"?0:1)}</em>`:"&nbsp;"}</span>
+      <span>target <em>${lower?"under ":""}${target}${unit==="%"?"%":""}</em></span></div>
+  </div>`;
+}
+
+function renderCoach(){
+  const el=$("#coachBody"); if(!el)return;
+  if(SCAN){ el.style.display="none"; return }
+  el.style.display="";
+  const gs=coachGames();
+  if(!gs.length){
+    el.innerHTML=`<div class="card empty">Put your chess.com username in the sidebar and hit
+      <b>Analyse my full history</b>. Once I've seen your games I'll tell you what to work on.</div>`;
+    return;
+  }
+  const win=gs.slice(-COACH_WIN), s=sumCoach(win), lifetime=sumCoach(gs);
+  const bestHang=bestWindow(gs,x=>x.hangRate,true), bestConv=bestWindow(gs,x=>x.convRate,false);
+  const i=currentStage(s), st=STAGES[i];
+
+  const buttons=st.go.map(g=>`<button class="btn ${g===st.go[0]?"pri":""}"
+    data-go="${g.scan?"scan:"+g.scan:g.leak?"leak:"+g.leak:"tab:"+g.tab}">${esc(g.label)}</button>`).join("");
+
+  el.innerHTML=`
+  <div class="today">
+    <div class="eyebrow">Work on this</div>
+    <h2>${esc(st.title)}</h2>
+    <p>${st.d}</p>
+    <p style="margin-top:12px;color:var(--muted);font-size:13.5px">Right now you're ${st.at(s)}.</p>
+    <div class="row">${buttons}</div>
+  </div>
+
+  <div class="card sect" style="margin-bottom:16px">
+    <h2>Two-minute warm-up</h2>
+    <p class="note" style="margin:-6px 0 12px">Not a puzzle — a habit. Positions from your own games,
+      no engine, a few seconds each. Do this before you play and most of the material stops leaking.</p>
+    <div class="row">
+      <button class="btn" data-go="scan:def">What can he take?</button>
+      <button class="btn" data-go="scan:att">What can I take?</button>
+    </div>
+  </div>
+
+  <div class="goal">
+    ${meter(s.hangRate,T_HANG,B_HANG,true,"Pieces you give away, per 100 moves",bestHang,"per 100 moves")}
+    ${meter(s.convRate,T_CONV,B_CONV,false,"Offered material you actually take",bestConv,"%")}
+  </div>
+  <p class="note" style="margin:-6px 0 18px">Measured over your last ${s.games} analysed game${s.games===1?"":"s"}
+    (${s.moves.toLocaleString()} of your moves), not over drills. These two move before your rating does —
+    rating is the lagging indicator, these are the leading ones.</p>
+
+  <div class="card sect">
+    <h2>Your route to a stronger game</h2>
+    <p class="note" style="margin:-6px 0 8px">In order. Each one stays in your way until its number moves.</p>
+    ${STAGES.map((x,j)=>{
+      const done=j<i, now=j===i;
+      return `<div class="stage ${done?"done":now?"now":"locked"}">
+        <div class="sdot">${done?"✓":""}</div>
+        <div>
+          <h4>${esc(x.title)}</h4>
+          <p class="sdesc">${x.d}</p>
+          <div class="sgate">${done?"cleared":x.at(s)}</div>
+        </div>
+        <div class="act">${now?`<button class="btn sm" data-go="${x.go[0].scan?"scan:"+x.go[0].scan:x.go[0].leak?"leak:"+x.go[0].leak:"tab:"+x.go[0].tab}">Start</button>`:""}</div>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <div class="card sect">
+    <h2>Where you started</h2>
+    <div class="cond"><span class="cn">First 20 games</span>
+      <span class="track"><i style="width:100%;background:var(--axis)"></i></span>
+      <span class="cv">${(sumCoach(gs.slice(0,COACH_WIN)).hangRate||0).toFixed(1)} per 100</span></div>
+    <div class="cond"><span class="cn">Last ${s.games} games</span>
+      <span class="track"><i style="width:${Math.min(100,100*(s.hangRate||0)/Math.max(0.1,sumCoach(gs.slice(0,COACH_WIN)).hangRate||1)).toFixed(0)}%;background:var(--s1)"></i></span>
+      <span class="cv">${(s.hangRate||0).toFixed(1)} per 100</span></div>
+    <p class="note">Across all ${lifetime.games} analysed games you've played ${lifetime.moves.toLocaleString()} moves.
+      Shorter bar is better.</p>
+  </div>`;
+
+  $$("#coachBody [data-go]").forEach(b=>b.onclick=()=>{
+    const [kind,val]=b.dataset.go.split(":");
+    if(kind==="scan")startScan(val);
+    else if(kind==="leak")setFocus(val);
+    else{ $$(".tab").forEach(x=>x.classList.toggle("on",x.dataset.v===val));
+          $$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+val));
+          if(val==="weak")renderWeak(); }
+  });
+}
+
+/* ---------- board scan: the habit, not the answer ----------------------
+   The drills teach you the move you missed. This teaches the look that would
+   have found it — and it's the one thing here that needs no engine, so the
+   reps are instant. Positions come from your own games. */
+let SCAN=null;
+const SCANSTAT={n:0,ok:0};
+function scanAnswer(fen,hero,mode){
+  const foe=hero==="w"?"b":"w";
+  let t;
+  try{ t=new Chess(mode==="def"?setTurn(fen,foe):fen) }catch(e){ return null }
+  // In defend mode we hand the move to the opponent. If he'd be in check the
+  // question stops making sense — he'd only be answering the check.
+  if(!t||t.in_check())return null;
+  const out=new Set();
+  for(const m of t.moves({verbose:true})){
+    if(!m.captured)continue;
+    if(seeCapture(t,m)>0)out.add(m.to);
+  }
+  return out;
+}
+function pickScan(mode,wantEmpty){
+  const gs=coachGames(); if(!gs.length)return null;
+  for(let tries=0;tries<240;tries++){
+    const g=gs[Math.floor(Math.random()*gs.length)], ml=g.mlog||[];
+    if(!ml.length)continue;
+    const m=ml[Math.floor(Math.random()*ml.length)];
+    if(!m.fen)continue;
+    let b; try{ b=new Chess(m.fen) }catch(e){ continue }
+    if(b.in_check())continue;                     // forced; nothing to scan for
+    const hero=g.isWhite?"w":"b";
+    const ans=scanAnswer(m.fen,hero,mode);
+    if(!ans)continue;
+    if(wantEmpty!=null&&(ans.size===0)!==wantEmpty)continue;
+    return {fen:m.fen,hero,mode,ans,picked:new Set(),done:false,vs:hero==="w"?g.black:g.white,n:m.n};
+  }
+  return null;
+}
+function startScan(mode){
+  $$(".tab").forEach(x=>x.classList.toggle("on",x.dataset.v==="coach"));
+  $$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-coach"));
+  nextScan(mode);
+  window.scrollTo(0,0);
+}
+function nextScan(mode){
+  // Half the positions have nothing loose on purpose — otherwise "something is
+  // always hanging" becomes the answer and the scan stops being a scan.
+  const want=Math.random()<0.45;
+  SCAN=pickScan(mode,want)||pickScan(mode,!want)||pickScan(mode,null);
+  if(!SCAN){ endScan(); return }
+  renderScan();
+}
+function endScan(){
+  SCAN=null; $("#scanUI").style.display="none"; renderCoach();
+}
+function renderScan(){
+  const el=$("#scanUI"); if(!el||!SCAN)return;
+  $("#coachBody").style.display="none";
+  el.style.display="block";
+  const marks={};
+  if(SCAN.done){
+    SCAN.ans.forEach(sq=>marks[sq]=SCAN.picked.has(sq)?"got":"hint");
+    SCAN.picked.forEach(sq=>{ if(!SCAN.ans.has(sq))marks[sq]="miss" });
+  } else SCAN.picked.forEach(sq=>marks[sq]="pick");
+  const right=SCAN.done&&SCAN.ans.size===SCAN.picked.size&&[...SCAN.ans].every(s=>SCAN.picked.has(s));
+  const def=SCAN.mode==="def";
+  el.innerHTML=`<div class="scanwrap">
+    <div><div class="board" id="scanBoard"></div></div>
+    <div>
+      <p class="scanq">${def?"He has just moved. Click every one of <b>your</b> pieces he can win material on."
+                           :"It's your move. Click every one of <b>his</b> pieces you can win material on."}</p>
+      <div class="scanscore"><span>Position <b>${SCANSTAT.n+(SCAN.done?0:1)}</b></span>
+        <span>Right <b>${SCANSTAT.ok}</b> of <b>${SCANSTAT.n}</b></span>
+        <span style="color:var(--muted)">from your game vs ${esc(SCAN.vs||"?")}, move ${esc(SCAN.n)}</span></div>
+      ${SCAN.done?`<div class="fb ${right?"ok":"bad"}">
+          <div class="hd">${right?(SCAN.ans.size?"Right — you found all of them.":"Right — nothing was loose.")
+                                 :(SCAN.ans.size?`Not quite. ${SCAN.ans.size} square${SCAN.ans.size===1?" was":"s were"} loose.`
+                                                :"Nothing was actually loose there.")}</div>
+          ${SCAN.ans.size?`Green is what you found, amber is what you missed, red is what you picked that was safe.`
+                         :`Anything red you picked was defended well enough that taking it loses material.`}
+        </div>`:""}
+      <div class="row" style="margin-top:14px">
+        ${SCAN.done?`<button class="btn pri" id="scanNext">Next position →</button>`
+                   :`<button class="btn pri" id="scanCheck">${SCAN.picked.size?"Check":"Nothing is loose"}</button>`}
+        <button class="btn" id="scanQuit">Done for now</button>
+      </div>
+      <div class="legend" style="justify-content:flex-start">
+        <span><i style="background:#f6f669"></i>picked</span>
+        <span><i style="background:#48c14a"></i>found</span>
+        <span><i style="background:var(--warning)"></i>missed</span>
+        <span><i style="background:#e04b4b"></i>safe</span>
+      </div>
+    </div></div>`;
+  renderBoard($("#scanBoard"),SCAN.fen,SCAN.hero==="b",marks,null);
+  const c=$("#scanCheck"); if(c)c.onclick=()=>{
+    SCAN.done=true; SCANSTAT.n++;
+    if(SCAN.ans.size===SCAN.picked.size&&[...SCAN.ans].every(s=>SCAN.picked.has(s)))SCANSTAT.ok++;
+    renderScan();
+  };
+  const n=$("#scanNext"); if(n)n.onclick=()=>nextScan(SCAN.mode);
+  $("#scanQuit").onclick=endScan;
+}
+document.addEventListener("click",ev=>{
+  if(!SCAN||SCAN.done)return;
+  const t=ev.target.closest&&ev.target.closest("#scanBoard .sq");
+  if(!t)return;
+  const sq=t.dataset.sq;
+  if(SCAN.picked.has(sq))SCAN.picked.delete(sq); else SCAN.picked.add(sq);
+  renderScan();
+});
+
 /* ---------- weaknesses view ---------- */
 const NODRILLS0=$("#noDrills").innerHTML;
 function renderFocus(){
@@ -2910,17 +3331,24 @@ function setFocus(k){
 // Errors per 100 of your own moves, split by whatever bucket is asked for.
 // The denominator matters: you make far more middlegame moves than endgame
 // moves, so raw counts would always crown the middlegame.
-function leakRates(pick,labels,ES){
+function leakRates(pick,labels,ES,filt){
   const err={},tot={};
   labels.forEach(l=>{err[l]=0;tot[l]=0});
   Object.values(DB.games).forEach(g=>{
     if(!g||!g.mlog||!g.mlog.length)return;
-    g.mlog.forEach(m=>{ const b=pick(m,g); if(b!=null&&tot[b]!=null)tot[b]++ });
+    g.mlog.forEach(m=>{ if(filt&&!filt(m))return;
+      const b=pick(m,g); if(b!=null&&tot[b]!=null)tot[b]++ });
   });
-  ES.forEach(e=>{ const b=pick(e.m,{cls:e.cls},e); if(b!=null&&err[b]!=null)err[b]++ });
+  ES.forEach(e=>{ if(filt&&!filt(e.m))return;
+    const b=pick(e.m,{cls:e.cls},e); if(b!=null&&err[b]!=null)err[b]++ });
   return labels.filter(l=>tot[l]>=25)
                .map(l=>({l,n:err[l],of:tot[l],rate:100*err[l]/tot[l]}));
 }
+// Comparing phases only means something in positions that were still in the
+// balance. Most late-game moves happen after the result is settled, where the
+// win-probability metric can barely move — leave those in and the endgame
+// always looks like your strongest phase whether it is or not.
+const LIVE=m=>Math.abs(m.eb)<300;
 function condBlock(title,rows,note){
   if(rows.length<2)return "";
   const mx=Math.max(...rows.map(r=>r.rate),0.1);
@@ -2994,7 +3422,7 @@ function drawWeak(el,gl){
 
   // when it happens
   const phaseRows=leakRates((m)=>["Moves 1–12","Moves 13–30","Move 31 on"][phaseOf(m.n)],
-    ["Moves 1–12","Moves 13–30","Move 31 on"],ES);
+    ["Moves 1–12","Moves 13–30","Move 31 on"],ES,LIVE);
   const worstPhase=phaseRows.slice().sort((a,b)=>b.rate-a.rate)[0];
   const ctxRows=leakRates((m)=>m.forcing?"Captures & checks":"Quiet positions",
     ["Quiet positions","Captures & checks"],ES);
@@ -3011,13 +3439,11 @@ function drawWeak(el,gl){
                  .sort((a,b)=>b.rate-a.rate);
   })();
 
-  html+=`<div class="card sect"><h2>When it goes wrong</h2>
-    <p class="note" style="margin:-6px 0 2px">Mistakes per 100 of your own moves, so buckets you barely play
-    don't get flattered. Longest bar is your worst condition.</p>`+
+  const blocks=
     condBlock("Stage of the game",phaseRows,
-      worstPhase&&worstPhase.l==="Moves 1–12"
-        ? `Your opening is the most dangerous part of your game, not the endgame. That's a repertoire problem more than a tactics problem — the <b>Openings</b> tab is where that gets fixed.`
-        : `Your worst stretch is <b>${worstPhase?esc(worstPhase.l.toLowerCase()):"—"}</b>.`)+
+      `Counted only in positions that were still within three pawns, because most late moves
+       happen after the result is settled. Your worst stretch is
+       <b>${worstPhase?esc(worstPhase.l.toLowerCase()):"—"}</b>.`)+
     condBlock("Type of position",ctxRows,
       ctxRows.length===2&&ctxRows[0].rate>ctxRows[1].rate*1.25
         ? `You're steadier when the position forces your hand than when it doesn't. Quiet moves are where you stop checking, so that's where the material goes.`
@@ -3025,7 +3451,12 @@ function drawWeak(el,gl){
     condBlock("Which piece you moved",pieceRows,
       pieceRows.length?`You go wrong most often on the move you touch your <b>${esc(pieceRows[0].l.replace("Moved a ",""))}</b>.`:"")+
     condBlock("Time control",clsRows,
-      clsRows.length>1?`If one line here is much longer than the others, that format is costing you rating you'd keep by not playing it.`:"")+
+      clsRows.length>1?`If one line here is much longer than the others, that format is costing you rating you'd keep by not playing it.`:"");
+  html+=`<div class="card sect"><h2>When it goes wrong</h2>`+
+    (blocks?`<p class="note" style="margin:-6px 0 2px">Mistakes per 100 of your own moves, so buckets you barely play
+      don't get flattered. Longest bar is your worst condition.</p>${blocks}`
+     :`<p class="note">Not enough games yet — each breakdown needs 25 of your moves in a bucket
+      before it means anything. Analyse a few more and this fills in.</p>`)+
   `</div>`;
 
   // trend
@@ -3057,6 +3488,7 @@ function drawWeak(el,gl){
 
 function renderAll(){renderProgress();renderCapsules();renderGames();renderOpenings();
   if($("#v-weak").classList.contains("on"))renderWeak();
+  if($("#v-coach").classList.contains("on"))renderCoach();
   if(!cur||!drillPool().find(d=>d.id===(cur&&cur.id)))startDrill();}
 // during a long sync, redraw at most every few seconds — the final renderAll()
 // after the loop is what guarantees the page ends up correct
@@ -3072,6 +3504,7 @@ $$(".tab").forEach(t=>t.onclick=()=>{
   $$(".tab").forEach(x=>x.classList.toggle("on",x===t));
   $$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+t.dataset.v));
   if(t.dataset.v==="weak")renderWeak();
+  if(t.dataset.v==="coach")renderCoach();
 });
 $("#sync").onclick=()=>sync(false);
 $("#exp").onclick=()=>{
@@ -3109,7 +3542,7 @@ $("#imp").onclick=()=>{
       attempts:Array.isArray(o.attempts)?o.attempts:[],
       oattempts:Array.isArray(o.oattempts)?o.oattempts:[]
     });
-    REPORTS.clear(); LEAKCACHE.clear(); cur=null; lastRender=0;
+    REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear(); cur=null; lastRender=0;
     if(save()){
       $("#user").value=DB.user||"";
       applyTheme(DB.theme||"green");
