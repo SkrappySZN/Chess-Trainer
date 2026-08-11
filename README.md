@@ -11,6 +11,11 @@ engine over every move you played, and turns the ones you got wrong into drills.
 - **Play** — bots that make plausible mistakes, including **your past self** — every
   year you played enough rated games becomes an opponent that samples that year's
   own distribution of mistakes
+- **Weaknesses** — every mistake you make sorted into named leaks (left a piece
+  takeable, missed mate in one, walked past free material…), ranked by what they
+  actually cost you, with the conditions they happen under — stage of the game,
+  quiet or forcing positions, which piece you moved, which time control. Each one
+  has a **Drill this** button that fills the Train tab with nothing but that mistake
 - **Openings** — a guided, playable repertoire (Italian as White, 1...e5 as Black)
   with the reason behind every move, drills to make it stick, and a report on which
   openings you actually play and how far you get before leaving them

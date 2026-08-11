@@ -62,7 +62,11 @@ b{color:var(--ink);font-weight:620}
 .brand{display:flex;flex-direction:column;gap:3px}
 @media(max-width:980px){.brand{flex-direction:row;align-items:baseline;gap:10px}}
 .tabs{display:flex;flex-direction:column;gap:2px;margin:0;border-bottom:0}
-@media(max-width:980px){.tabs{flex-direction:row}}
+/* six tabs no longer fit across a phone, so let the strip scroll sideways
+   rather than push the whole page wider than the viewport */
+@media(max-width:980px){.tabs{flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;white-space:nowrap}}
 .tab{background:none;border:0;border-left:2px solid transparent;color:var(--muted);font:inherit;font-size:14.5px;
  font-weight:560;padding:9px 12px;cursor:pointer;transition:.13s;text-align:left;border-radius:8px}
 .tab:hover{color:var(--ink-2)}
@@ -226,6 +230,44 @@ td{color:var(--ink-2)}td:first-child{color:var(--ink)}
 .barrow .track i{display:block;height:100%;border-radius:5px}
 .barrow .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12.5px}
 .empty{color:var(--muted);font-size:14px;padding:26px 0;text-align:center}
+
+/* ---- weaknesses ---- */
+.leak{display:grid;grid-template-columns:44px 1fr auto;gap:14px;align-items:start;
+ padding:16px 0;border-bottom:1px solid var(--hair)}
+.leak:last-child{border-bottom:0}
+.leak .rank{font-size:22px;font-weight:640;color:var(--muted);font-variant-numeric:tabular-nums;
+ text-align:right;line-height:1.25}
+.leak.top .rank{color:var(--critical)}
+.leak h4{margin:0 0 5px;font-size:16px;font-weight:640;color:var(--ink)}
+.leak .lstat{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:7px}
+.leak .lstat b{color:var(--ink-2);font-weight:620}
+.leak .ldesc{font-size:13.5px;color:var(--ink-2);line-height:1.55;max-width:66ch;margin:0}
+.leak .lfix{font-size:13px;color:var(--muted);line-height:1.55;max-width:66ch;margin:7px 0 0}
+.leak .lfix b{color:var(--ink-2)}
+.leak .lbar{height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin:9px 0 10px;max-width:420px}
+.leak .lbar i{display:block;height:100%;border-radius:4px;background:var(--critical)}
+.leak .act{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:132px}
+@media(max-width:700px){
+  .leak{grid-template-columns:34px 1fr}
+  .leak .act{grid-column:2;flex-direction:row;min-width:0}
+}
+.wkhero{background:var(--surface);border:1px solid var(--hair);border-left:3px solid var(--critical);
+ border-radius:13px;padding:18px 20px;margin-bottom:16px}
+.wkhero .eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--critical);
+ font-weight:650;margin-bottom:7px}
+.wkhero h3{margin:0 0 8px;font-size:20px;letter-spacing:-.02em}
+.wkhero p{margin:0;font-size:14.5px;color:var(--ink-2);line-height:1.6;max-width:72ch}
+.wkhero .row{margin-top:14px}
+.cond{display:grid;grid-template-columns:118px 1fr 84px;gap:11px;align-items:center;font-size:13px;margin:7px 0}
+.cond .cn{color:var(--ink-2)}
+.cond .track{height:9px;background:var(--axis);border-radius:5px;overflow:hidden}
+.cond .track i{display:block;height:100%;border-radius:5px}
+.cond .cv{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12.5px}
+.focusbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-2);
+ border:1px solid var(--hair);border-left:3px solid var(--s1);border-radius:11px;
+ padding:11px 15px;margin-bottom:14px;font-size:13.5px;color:var(--ink-2)}
+.focusbar b{color:var(--ink)}
+.focusbar .fspacer{margin-left:auto}
 .note{font-size:12.5px;color:var(--muted);margin-top:14px}
 input[type=text]{background:var(--surface-2);border:1px solid var(--hair);color:var(--ink);border-radius:8px;
  padding:9px 12px;font:inherit;font-size:14px;width:150px}
@@ -294,6 +336,7 @@ ul.bul li{margin:7px 0}
   <div class="tabs">
     <button class="tab on" data-v="train">Train</button>
     <button class="tab" data-v="play">Play</button>
+    <button class="tab" data-v="weak">Weaknesses</button>
     <button class="tab" data-v="prog">Progress</button>
     <button class="tab" data-v="open">Openings</button>
     <button class="tab" data-v="games">Games</button>
@@ -342,6 +385,7 @@ ul.bul li{margin:7px 0}
 
 <!-- ================= TRAIN ================= -->
 <div class="view on" id="v-train">
+  <div class="focusbar" id="focusBar" style="display:none"></div>
   <div id="noDrills" class="card empty">
     No drills yet. Hit <b>Analyse my full history</b> in the sidebar — it pulls your chess.com games
     and runs Stockfish on every move you played to find the moments you missed something.
@@ -457,6 +501,14 @@ ul.bul li{margin:7px 0}
   <div class="card sect">
     <h2>Rating</h2>
     <div id="ratings"><div class="empty">Sync to load.</div></div>
+  </div>
+</div>
+
+<!-- ================= WEAKNESSES ================= -->
+<div class="view" id="v-weak">
+  <div id="wkBody">
+    <div class="card empty">Analyse your history first — this tab reads every move you played and
+    sorts your mistakes by what they actually cost you.</div>
   </div>
 </div>
 
@@ -597,7 +649,7 @@ function save(){
         warnStore("Browser storage is full and nothing is being saved. Export your progress, then use Start fresh.");
         return false;
       }
-      trimmed+=n; REPORTS.clear();
+      trimmed+=n; REPORTS.clear(); LEAKCACHE.clear();
     }
   }
 }
@@ -916,6 +968,289 @@ const MOTIF={
   pos:{label:"Positional",cls:"pos",tip:"No single tactic — this is about finding the strongest continuation."}
 };
 
+/* ---------- weaknesses: what actually goes wrong, and how often ----------
+   A motif describes the *answer* ("this one's a fork"). A leak describes the
+   *mistake* ("you left a knight takeable"). They're different questions and
+   only the second one tells you what to practise.
+
+   Everything here is recomputed from the stored FEN and never read back from
+   storage — same rule as motifOf(), so fixing a rule below reaches games that
+   were analysed months ago without needing a re-sync. */
+
+// Static exchange evaluation: what the side to move really nets from a capture
+// once the whole trade sequence on that square plays out. Without this, every
+// ordinary recapture looks like a hung piece.
+//
+// This runs on a small 0x88 board of our own instead of asking chess.js. Its
+// moves({verbose:true}) builds SAN for every move, and SAN runs a second full
+// move generation each time to work out disambiguation — asking it "who can
+// take on this square" cost nine seconds over a full history. Reading the
+// attackers straight off the board costs nothing, and re-reading them after
+// every capture is what handles x-rays without a special case.
+//
+// Legality is still decided exactly the way chess.js decides it — play the
+// capture, ask whether our own king is attacked — so pins, being in check, and
+// a king that can't take a defended piece all come out the same as before.
+const SQX={}, ALGX=[];                                   // "e4" <-> 0x88 index
+for(let r=0;r<8;r++)for(let f=0;f<8;f++){ SQX[FILES[f]+(8-r)]=r*16+f; ALGX[r*16+f]=FILES[f]+(8-r) }
+const PCODE={p:1,n:2,b:3,r:4,q:5,k:6}, PCHR=" pnbrqk", PVAL=[0,1,3,3,5,9,0];
+const OFF_N=[-33,-31,-18,-14,14,18,31,33], OFF_K=[-17,-16,-15,-1,1,15,16,17],
+      OFF_B=[-17,-15,15,17], OFF_R=[-16,-1,1,16];
+// A square holds type|colour, colour 0 for white and 8 for black, 0 for empty.
+function posOf(t){
+  const p=t.fen().split(" "), rows=p[0].split("/"), b=new Int8Array(128), k=[0,0];
+  for(let r=0;r<8;r++){ let x=0;
+    for(const ch of rows[r]){
+      if(ch>="1"&&ch<="8"){ x+=+ch; continue }
+      const lo=ch.toLowerCase(), col=ch===lo?8:0;
+      b[r*16+x]=PCODE[lo]|col; if(lo==="k")k[col?1:0]=r*16+x; x++;
+    }
+  }
+  return {b,k,t:p[1]==="w"?0:8,ep:p[3]&&p[3]!=="-"?SQX[p[3]]:-1};
+}
+// Is `by` attacking sq? The one primitive legality needs.
+function attacked(b,by,sq){
+  const pawn=1|by, pd=by?-17:17, pe=by?-15:15;
+  if(!((sq+pd)&0x88)&&b[sq+pd]===pawn)return true;
+  if(!((sq+pe)&0x88)&&b[sq+pe]===pawn)return true;
+  const N=2|by,K=6|by,B=3|by,R=4|by,Q=5|by;
+  for(let i=0;i<8;i++){ const t=sq+OFF_N[i]; if(!(t&0x88)&&b[t]===N)return true }
+  for(let i=0;i<8;i++){ const t=sq+OFF_K[i]; if(!(t&0x88)&&b[t]===K)return true }
+  for(let i=0;i<4;i++){ let t=sq+OFF_B[i];
+    while(!(t&0x88)){ const c=b[t]; if(c){ if(c===B||c===Q)return true; break } t+=OFF_B[i] } }
+  for(let i=0;i<4;i++){ let t=sq+OFF_R[i];
+    while(!(t&0x88)){ const c=b[t]; if(c){ if(c===R||c===Q)return true; break } t+=OFF_R[i] } }
+  return false;
+}
+// Every piece of `by` that could capture on sq. sq must be occupied, so en
+// passant can't arrive here — that only ever lands on an empty square.
+function attTo(b,by,sq,out){
+  const pawn=1|by, pd=by?-17:17, pe=by?-15:15;
+  out.length=0;
+  if(!((sq+pd)&0x88)&&b[sq+pd]===pawn)out.push(sq+pd);
+  if(!((sq+pe)&0x88)&&b[sq+pe]===pawn)out.push(sq+pe);
+  const N=2|by,K=6|by,B=3|by,R=4|by,Q=5|by;
+  for(let i=0;i<8;i++){ const t=sq+OFF_N[i]; if(!(t&0x88)&&b[t]===N)out.push(t) }
+  for(let i=0;i<8;i++){ const t=sq+OFF_K[i]; if(!(t&0x88)&&b[t]===K)out.push(t) }
+  for(let i=0;i<4;i++){ let t=sq+OFF_B[i];
+    while(!(t&0x88)){ const c=b[t]; if(c){ if(c===B||c===Q)out.push(t); break } t+=OFF_B[i] } }
+  for(let i=0;i<4;i++){ let t=sq+OFF_R[i];
+    while(!(t&0x88)){ const c=b[t]; if(c){ if(c===R||c===Q)out.push(t); break } t+=OFF_R[i] } }
+  return out;
+}
+// Always queens a promotion, which is the promotion:'q' every caller passed.
+function doCap(P,from,to){
+  const b=P.b, mv=b[from], cap=b[to], us=P.t; let ec=-1, ecp=0;
+  if((mv&7)===1&&!cap&&(from&15)!==(to&15)){ ec=to+(us?-16:16); ecp=b[ec]; b[ec]=0 }
+  b[from]=0;
+  b[to]=(mv&7)===1&&(to<8||to>111)?5|us:mv;
+  if((mv&7)===6)P.k[us?1:0]=to;
+  P.t=us^8;
+  return {f:from,t:to,mv,cap,ec,ecp,us};
+}
+function undoCap(P,u){
+  const b=P.b; b[u.f]=u.mv; b[u.t]=u.cap;
+  if(u.ec>=0)b[u.ec]=u.ecp;
+  if((u.mv&7)===6)P.k[u.us?1:0]=u.f;
+  P.t=u.us;
+}
+// One scratch attacker list per depth so the recursion allocates nothing.
+const ATTBUF=[];
+function swapSee(P,sq,d){
+  const here=P.b[sq]; if(!here)return 0;
+  const val=PVAL[here&7], us=P.t;
+  const A=attTo(P.b,us,sq,ATTBUF[d]||(ATTBUF[d]=[]));
+  let best=0;
+  for(let i=0;i<A.length;i++){
+    const u=doCap(P,A[i],sq);
+    if(!attacked(P.b,P.t,P.k[us?1:0])){
+      const got=val-swapSee(P,sq,d+1);
+      if(got>best)best=got;
+    }
+    undoCap(P,u);
+  }
+  return best;                                   // no capture worth making = 0
+}
+// An illegal capture scores 0, exactly as the old code's failed move() did.
+function seeAt(P,from,to,gain){
+  const us=P.t, pc=P.b[from];
+  if(!pc||(pc&8)!==us)return 0;
+  const u=doCap(P,from,to);
+  const v=attacked(P.b,P.t,P.k[us?1:0])?0:gain-swapSee(P,to,0);
+  undoCap(P,u);
+  return v;
+}
+function swapOff(t,sq){ return swapSee(posOf(t),SQX[sq],0) }
+function seeCapture(t,mv){
+  const P=posOf(t);
+  return seeAt(P,SQX[mv.from],SQX[mv.to],mv.captured?VAL[mv.captured]:0);
+}
+// The best genuinely-winning capture available to whoever is to move.
+// Captures are tried biggest-first so the loop can stop as soon as nothing
+// left can beat the best found — a capture can never net more than the piece
+// it takes, so once the victim is worth no more than `best` we're done.
+function bestGrab(g){
+  const P=posOf(g), b=P.b, us=P.t, them=us^8, caps=[], A=[];
+  for(let sq=0;sq<120;sq++){
+    if(sq&0x88){ sq+=7; continue }
+    const c=b[sq]; if(!c||(c&8)!==them)continue;
+    attTo(b,us,sq,A);
+    for(let i=0;i<A.length;i++)caps.push({from:A[i],to:sq,v:PVAL[c&7],x:PCHR[c&7]});
+  }
+  if(P.ep>=0){                                   // the one capture with no piece on the target
+    const e=P.ep, pawn=1|us, pd=us?-17:17, pe=us?-15:15;
+    if(!((e+pd)&0x88)&&b[e+pd]===pawn)caps.push({from:e+pd,to:e,v:1,x:"p"});
+    if(!((e+pe)&0x88)&&b[e+pe]===pawn)caps.push({from:e+pe,to:e,v:1,x:"p"});
+  }
+  caps.sort((a,b)=>b.v-a.v);
+  let best=0,mv=null;
+  for(const c of caps){
+    if(c.v<=best)break;
+    const s=seeAt(P,c.from,c.to,c.v);
+    if(s>best){best=s;mv=c}
+  }
+  return {v:best,mv:mv&&{from:ALGX[mv.from],to:ALGX[mv.to],captured:mv.x}};
+}
+// Reading one square straight out of the FEN. Building a Chess just to ask
+// what piece moved would double the cost of the whole weakness pass.
+function pieceAt(fen,sq){
+  const rows=fen.split(" ")[0].split("/");
+  const f=FILES.indexOf(sq[0]), r=8-parseInt(sq[1],10);
+  if(f<0||!rows[r])return null;
+  let i=0;
+  for(const ch of rows[r]){
+    if(ch>="1"&&ch<="8"){ i+=+ch; if(i>f)return null }
+    else { if(i===f)return ch; i++ }
+  }
+  return null;
+}
+// chess.js already puts the # on a mating move's SAN, so this costs one move
+// generation rather than a search.
+function mateIn1(g){
+  try{ return g.moves({verbose:true}).find(m=>/#$/.test(m.san))||null }
+  catch(e){ return null }
+}
+
+const LEAKS={
+  missM:{short:"missed mate in one",label:"You miss mate in one",
+    d:"The game was there to be finished and you played something else. Every one of these is a position where you were already winning — the win just didn't get collected.",
+    fix:"Before you move in a winning position, look at every check you have. Mate in one is always a check, so the whole search is: list the checks, play the one he can't answer."},
+  allowM:{short:"walked into mate",label:"You walk into mate",
+    d:"After your move he had mate on the board immediately. Nearly always this is a back rank, or a queen and one more attacker arriving next to your king while you were busy elsewhere.",
+    fix:"When his queen or rook can reach the squares around your king, deal with that before anything else. Give the king an escape square early — a quiet h3 or g3 costs you one move and closes off a whole class of loss."},
+  hangQ:{short:"hung your queen",label:"You hang your queen",
+    d:"You moved your queen somewhere he could simply take it, or moved something else and left her takeable. The queen is 9 points, so this ends the game on the spot.",
+    fix:"The queen is the piece to be paranoid about. Every time you put her on a new square, check what attacks that square — pawns and knights especially, because those are the two that don't attack in straight lines you can see at a glance."},
+  hangR:{short:"hung a rook",label:"You hang a rook",
+    d:"He could just take a rook. Usually this is a rook sitting on an open file doing nothing while a bishop or knight quietly attacked it from a distance.",
+    fix:"Rooks get taken from far away. After his move, trace his bishops and his other rook down their lines and see where they end up — not where they are."},
+  hangP:{short:"left a piece takeable",label:"You leave a piece takeable",
+    d:"A knight or bishop of yours was there for the taking after your move. This is the single biggest, most repeatable thing standing between you and a higher rating.",
+    fix:"Make it mechanical. After you pick a move and before you play it, ask one question: if I play this, what can he take? Do that every move and most of these disappear without you learning anything new about chess."},
+  missFree:{short:"walked past free material",label:"You walk past free material",
+    d:"Something of his was hanging and you played elsewhere. Winning material you're handed is the cheapest way to win games at this level, and you're leaving it on the table.",
+    fix:"Scan his undefended pieces before you look for anything clever. Loose pieces first, plans second."},
+  hangPawn:{short:"dropped a pawn",label:"You drop pawns for nothing",
+    d:"Not fatal on its own, but a pawn given away every few moves is a lost endgame you never had to play, and it's often the first move of a sequence where the piece behind the pawn goes too.",
+    fix:"When you push a pawn, remember it can't come back. Count the attackers and defenders on the square in front of it before you commit."},
+  stale:{short:"stalemated a won game",label:"You stalemate a won game",
+    d:"Completely winning, and the game ended in a draw because he had no legal move. This is the most avoidable half-point in chess.",
+    fix:"With a big material lead, stop taking things and start checking. If his king has nowhere to go and he isn't in check, you're one careless move from throwing the whole game away — give him a square on purpose."},
+  pos:{short:"picked the wrong plan",label:"You pick the wrong plan",
+    d:"No piece hung and nothing was hanging — the move was just not the strongest continuation. This is the slowest category to fix and the least urgent.",
+    fix:"Worth working on once the material leaks above are under control. Until then, the points are cheaper elsewhere."}
+};
+const LEAKORDER=["missM","allowM","hangQ","hangR","hangP","missFree","hangPawn","stale","pos"];
+// Leaks where "pawns of material" is a real number rather than a stand-in.
+// A missed mate is scored as queen-equivalent so it ranks sensibly, but
+// printing "9.0 pawns" next to it would be nonsense.
+const MATERIAL={hangQ:1,hangR:1,hangP:1,hangPawn:1,missFree:1};
+
+// How much a single mistake actually hurt. Win-probability drop is the right
+// measure until the eval saturates — once you're at +12 or -12 a hung rook
+// barely moves the number even though it's still a hung rook, so material at
+// stake sets a floor.
+function leakDamage(m,see){ return Math.max(m.wl||0, see*4); }
+
+// The stored eval is used to decide which of the expensive checks are even
+// worth running. toCp() pins any mate at exactly ±MATECAP, so eb tells us for
+// free whether a mate was on the board, and tookBack/cpLoss tell us whether
+// anything could have been hanging. Without these gates every move pays for a
+// full search it almost never needs.
+function leakOf(m){
+  if(m.top||!m.fen||!m.from||!m.to)return null;
+  let b; try{ b=new Chess(m.fen) }catch(e){ return null }
+  const pc=b.get(m.from), piece=pc?PNAME[pc.type]:"pawn";
+  const wl=m.wl||0, cpl=m.cpLoss||0;
+
+  if(m.eb>=MATECAP&&mateIn1(b))return {k:"missM",see:9,piece};
+
+  // Free material that was already sitting there before you moved — only
+  // counted when what you played didn't win just as much itself.
+  let missed=0;
+  if(wl>=8||cpl>=150){
+    const mine=bestGrab(b);
+    if(mine.v>=3){
+      const legal=b.moves({verbose:true}).find(x=>x.from===m.from&&x.to===m.to);
+      missed=mine.v-(legal&&legal.captured?seeCapture(b,legal):0);
+    }
+  }
+
+  const mv=b.move({from:m.from,to:m.to,promotion:'q'});
+  if(!mv)return null;                            // b is now the position after your move
+  if(b.in_stalemate())return (m.eb>=300)?{k:"stale",see:9,piece}:null;
+  if(b.game_over())return null;                  // you mated him, or it's a legitimate draw
+
+  // Already lost by six pawns? Dropping another piece isn't the lesson.
+  if(m.eb>-600){
+    let grab=null;
+    const grabbed=()=>grab||(grab=bestGrab(b));
+    if(m.ea<=-MATECAP&&grabbed().v<5&&mateIn1(b))return {k:"allowM",see:9,piece};
+    if(m.tookBack||cpl>=80||wl>=4){
+      const g=grabbed();
+      if(g.v>=9)return {k:"hangQ",see:g.v,piece};
+      if(g.v>=5)return {k:"hangR",see:g.v,piece};
+      if(g.v>=3)return {k:"hangP",see:g.v,piece};
+      if(missed>=3)return {k:"missFree",see:missed,piece};
+      if(g.v>=1&&wl>=5)return {k:"hangPawn",see:g.v,piece};
+    }
+  }
+  if(missed>=3)return {k:"missFree",see:missed,piece};
+  if(wl>=THRESH)return {k:"pos",see:0,piece};
+  return null;
+}
+
+// Cached per game exactly like gameReport() — the key includes the move count
+// so a re-analysed game recomputes and everything else stays warm.
+const LEAKCACHE=new Map();
+function leaksOf(g){
+  const key=(g.url||"")+"|"+((g.mlog||[]).length);
+  if(LEAKCACHE.has(key))return LEAKCACHE.get(key);
+  const hero=g.isWhite?"w":"b";
+  const out=[];
+  (g.mlog||[]).forEach(m=>{
+    const r=leakOf(m);
+    if(!r)return;
+    out.push({k:r.k,see:r.see,dmg:leakDamage(m,r.see),m,url:g.url,hero,
+              vs:hero==="w"?g.black:g.white,cls:g.cls,piece:r.piece,n:m.n});
+  });
+  LEAKCACHE.set(key,out);
+  return out;
+}
+function allLeaks(){
+  const out=[];
+  Object.values(DB.games).forEach(g=>{ if(g&&g.mlog&&g.mlog.length)out.push(...leaksOf(g)) });
+  return out;
+}
+function leakDrill(e){
+  const ply=(e.n-1)*2+(e.hero==="w"?0:1);      // matches the ids sync() writes
+  const m=e.m;
+  return {id:(e.url||"")+"#"+ply,fen:m.fen,hero:e.hero,best:m.best,
+          bestSan:m.bestSan||m.best,played:m.san,playedUci:m.from+m.to,
+          eb:m.eb,ea:m.ea,drop:m.wl||0,motif:m.motif,vs:e.vs,movenum:m.n,
+          url:e.url,leak:e.k};
+}
+
 /* ---------- sync + analyse ---------- */
 const logEl=$("#log");
 const log=(s)=>{logEl.innerHTML=s+"<br>"+logEl.innerHTML};
@@ -1188,10 +1523,21 @@ function drillState(A){
   return {box,tries,misses,skips,last,due,fresh};
 }
 const drillStateOf=(id,by)=>drillState((by||attemptsByDrill())[id]);
+// When a leak is in focus the drill pool is rebuilt from the raw move log
+// rather than from DB.drills, so positions that never cleared the "serious
+// error" bar — a missed mate in one in an already-won game, a piece hung when
+// the eval was saturated — are still trainable. Ids match the ones sync()
+// writes, so a position's spaced-repetition history carries over either way.
+let FOCUS=null;
+function drillPool(){
+  if(!FOCUS)return DB.drills;
+  return allLeaks().filter(e=>e.k===FOCUS).map(leakDrill);
+}
 function pickDrill(){
-  if(!DB.drills.length)return null;
+  const pool=drillPool();
+  if(!pool.length)return null;
   const by=attemptsByDrill(), now=Date.now();
-  const all=DB.drills.map(d=>({d,s:drillState(by[d.id])}));
+  const all=pool.map(d=>({d,s:drillState(by[d.id])}));
   const ready=all.filter(x=>now>=x.s.due);
   const first=(list,cmp)=>list.length?list.slice().sort(cmp)[0].d:null;
   const worst=(a,b)=>(b.d.drop||0)-(a.d.drop||0);
@@ -1208,6 +1554,13 @@ function pickDrill(){
     // 4. nothing due — keep the session going rather than dead-ending
     || first(all,weakest)
   );
+}
+// Only set on drills that came out of a focused leak — says why this position
+// is in front of you, which the motif pill deliberately doesn't (that one
+// describes the answer, this one describes the mistake).
+function leakNote(d){
+  const L=d&&d.leak&&LEAKS[d.leak];
+  return L?` You <b>${L.short}</b> here.`:"";
 }
 function drillNote(d,by){
   const s=drillStateOf(d.id,by);
@@ -1238,13 +1591,17 @@ function setLegend(){
 }
 function startDrill(){
   cur=pickDrill(); answered=false; sel=null; started=false; viewResult=false; lastTry=null; clearUser("board");
-  if(!cur){$("#noDrills").style.display="block";$("#drillUI").style.display="none";return}
+  renderFocus();
+  if(!cur){
+    if(FOCUS)$("#noDrills").innerHTML=`Nothing left to drill for <b>${esc((LEAKS[FOCUS]||{}).label||FOCUS)}</b>.
+      Clear the focus above to go back to everything.`;
+    $("#noDrills").style.display="block";$("#drillUI").style.display="none";return}
   $("#noDrills").style.display="none"; $("#drillUI").style.display="block";
   const m=MOTIF[motifOf(cur)]||MOTIF.pos;
   $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
   $("#prompt").textContent="Find the move you missed";
   $("#ctx").innerHTML=`From your game vs <b>${esc(cur.vs)}</b>, move ${esc(cur.movenum)}. You played <b>${esc(cur.played)}</b> here — `+
-    `it'll be marked in red on the board. Find something better.`+drillNote(cur);
+    `it'll be marked in red on the board. Find something better.`+leakNote(cur)+drillNote(cur);
   $("#fb").innerHTML=""; $("#next").style.display="none"; $("#toggleRes").style.display="none";
   $("#hint").disabled=false; $("#skip").disabled=false;
   setTurnChip(); setLegend();
@@ -1752,7 +2109,7 @@ async function reviewGame(){
     wr:0,br:0,end:Math.floor(Date.now()/1000),isWhite:hero==="w",
     moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:g0.result||"",how:g0.result||""};
   g0.mlog=mlog;
-  DB.drills=DB.drills.concat(drills); REPORTS.clear(); save(); renderProgress(); renderGames();
+  DB.drills=DB.drills.concat(drills); REPORTS.clear(); LEAKCACHE.clear(); save(); renderProgress(); renderGames();
   const med=g0.times.length?g0.times.slice().sort((a,b)=>a-b)[Math.floor(g0.times.length/2)]:0;
   buildReview(mlog,med,hero);
 }
@@ -2528,7 +2885,179 @@ function wireDrillLinks(){
     window.scrollTo(0,0);
   });
 }
-function renderAll(){renderProgress();renderCapsules();renderGames();renderOpenings();if(!cur||!DB.drills.find(d=>d.id===(cur&&cur.id)))startDrill();}
+/* ---------- weaknesses view ---------- */
+const NODRILLS0=$("#noDrills").innerHTML;
+function renderFocus(){
+  const bar=$("#focusBar");
+  if(!FOCUS){ bar.style.display="none"; $("#noDrills").innerHTML=NODRILLS0; return }
+  const L=LEAKS[FOCUS]||{label:FOCUS};
+  const by=attemptsByDrill(), pool=drillPool();
+  const solved=pool.filter(d=>drillState(by[d.id]).box>=3).length;
+  bar.style.display="flex";
+  bar.innerHTML=`<span>Focused on <b>${esc(L.label)}</b> — ${pool.length} position${pool.length===1?"":"s"}
+    from your games, ${solved} holding.</span>
+    <span class="fspacer"></span>
+    <button class="btn sm" id="focusOff">Drill everything instead</button>`;
+  $("#focusOff").onclick=()=>{ FOCUS=null; startDrill(); renderWeak(); };
+}
+function setFocus(k){
+  FOCUS=k;
+  $$(".tab").forEach(x=>x.classList.toggle("on",x.dataset.v==="train"));
+  $$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-train"));
+  startDrill();
+  window.scrollTo(0,0);
+}
+// Errors per 100 of your own moves, split by whatever bucket is asked for.
+// The denominator matters: you make far more middlegame moves than endgame
+// moves, so raw counts would always crown the middlegame.
+function leakRates(pick,labels,ES){
+  const err={},tot={};
+  labels.forEach(l=>{err[l]=0;tot[l]=0});
+  Object.values(DB.games).forEach(g=>{
+    if(!g||!g.mlog||!g.mlog.length)return;
+    g.mlog.forEach(m=>{ const b=pick(m,g); if(b!=null&&tot[b]!=null)tot[b]++ });
+  });
+  ES.forEach(e=>{ const b=pick(e.m,{cls:e.cls},e); if(b!=null&&err[b]!=null)err[b]++ });
+  return labels.filter(l=>tot[l]>=25)
+               .map(l=>({l,n:err[l],of:tot[l],rate:100*err[l]/tot[l]}));
+}
+function condBlock(title,rows,note){
+  if(rows.length<2)return "";
+  const mx=Math.max(...rows.map(r=>r.rate),0.1);
+  return `<div style="margin-top:18px">`+
+    (title?`<div style="font-size:13px;font-weight:620;color:var(--ink);margin-bottom:8px">${title}</div>`:"")+
+    rows.map(r=>{
+      const worst=r.rate>=mx-0.001;
+      return `<div class="cond"><span class="cn">${esc(r.l)}</span>
+        <span class="track"><i style="width:${Math.round(r.rate/mx*100)}%;background:${worst?"var(--critical)":"var(--s1)"}"></i></span>
+        <span class="cv">${r.rate.toFixed(1)} per 100</span></div>`;
+    }).join("")+
+    (note?`<p class="note" style="margin-top:9px">${note}</p>`:"")+`</div>`;
+}
+function renderWeak(){
+  const el=$("#wkBody"); if(!el)return;
+  const gl=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length);
+  if(!gl.length){
+    el.innerHTML=`<div class="card empty">Analyse your history first — this tab reads every move you
+      played and sorts your mistakes by what they actually cost you.</div>`; return;
+  }
+  el.innerHTML=`<div class="card empty">Reading ${gl.reduce((s,g)=>s+g.mlog.length,0).toLocaleString()} of your moves…</div>`;
+  // one frame so the message paints before the first (uncached) pass blocks
+  setTimeout(()=>drawWeak(el,gl),16);
+}
+function drawWeak(el,gl){
+  const ES=allLeaks();
+  const moves=gl.reduce((s,g)=>s+g.mlog.length,0);
+  if(!ES.length){
+    el.innerHTML=`<div class="card empty">Nothing to report — no repeatable mistakes found in ${moves} moves.</div>`;
+    return;
+  }
+  const by={};
+  ES.forEach(e=>{ const b=by[e.k]||(by[e.k]={n:0,dmg:0,see:0}); b.n++; b.dmg+=e.dmg; b.see+=e.see });
+  const ranked=LEAKORDER.filter(k=>by[k]).sort((a,b)=>by[b].dmg-by[a].dmg);
+  const top=ranked[0], mx=by[top].dmg;
+  const T=LEAKS[top];
+  const games=gl.length;
+
+  // headline
+  let html=`<div class="wkhero">
+    <div class="eyebrow">Your biggest leak</div>
+    <h3>${esc(T.label)}</h3>
+    <p>${T.d}</p>
+    <p style="margin-top:10px;color:var(--muted);font-size:13.5px">
+      <b style="color:var(--ink)">${by[top].n} times</b> across ${games} analysed game${games===1?"":"s"} —
+      once every <b style="color:var(--ink)">${(moves/by[top].n).toFixed(0)} moves</b> you play.
+      ${Math.round(100*by[top].dmg/ES.reduce((s,e)=>s+e.dmg,0))}% of everything your mistakes cost you comes from this one thing.</p>
+    <div class="row"><button class="btn pri" data-leak="${top}">Drill this — ${by[top].n} positions</button></div>
+  </div>`;
+
+  // the full ranking
+  html+=`<div class="card sect"><h2>Everything, ranked by what it costs you</h2>
+    <p class="note" style="margin:-6px 0 6px">Ranked by damage, not by count — a hung queen twice is worse than a
+    dropped pawn ten times. "Drill this" fills the Train tab with nothing but that mistake.</p>`;
+  ranked.forEach((k,i)=>{
+    const b=by[k], L=LEAKS[k];
+    html+=`<div class="leak${i===0?" top":""}">
+      <div class="rank">${i+1}</div>
+      <div>
+        <h4>${esc(L.label)}</h4>
+        <div class="lstat"><b>${b.n}</b> time${b.n===1?"":"s"} · once every <b>${(moves/b.n).toFixed(0)}</b> of your moves${
+          MATERIAL[k]?` · <b>${(b.see/b.n).toFixed(1)}</b> pawns of material on average`:""}</div>
+        <div class="lbar"><i style="width:${Math.round(b.dmg/mx*100)}%;background:${i===0?"var(--critical)":i<3?"var(--serious)":"var(--s1)"}"></i></div>
+        <p class="ldesc">${L.d}</p>
+        <p class="lfix"><b>How to fix it:</b> ${L.fix}</p>
+      </div>
+      <div class="act"><button class="btn sm" data-leak="${k}">Drill this</button></div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // when it happens
+  const phaseRows=leakRates((m)=>["Moves 1–12","Moves 13–30","Move 31 on"][phaseOf(m.n)],
+    ["Moves 1–12","Moves 13–30","Move 31 on"],ES);
+  const worstPhase=phaseRows.slice().sort((a,b)=>b.rate-a.rate)[0];
+  const ctxRows=leakRates((m)=>m.forcing?"Captures & checks":"Quiet positions",
+    ["Quiet positions","Captures & checks"],ES);
+  const clsRows=leakRates((m,g)=>({daily:"Daily",rapid:"Rapid",blitz:"Blitz",bullet:"Bullet"})[g.cls]||null,
+    ["Daily","Rapid","Blitz","Bullet"],ES);
+  const pieceRows=(()=>{
+    const labels=["knight","bishop","rook","queen","pawn","king"];
+    const err={},tot={}; labels.forEach(l=>{err[l]=0;tot[l]=0});
+    Object.values(DB.games).forEach(g=>{ if(!g||!g.mlog)return; g.mlog.forEach(m=>{
+      const c=m.fen&&m.from&&pieceAt(m.fen,m.from);
+      if(c&&tot[PNAME[c.toLowerCase()]]!=null)tot[PNAME[c.toLowerCase()]]++ }) });
+    ES.forEach(e=>{ if(err[e.piece]!=null)err[e.piece]++ });
+    return labels.filter(l=>tot[l]>=25).map(l=>({l:"Moved a "+l,n:err[l],of:tot[l],rate:100*err[l]/tot[l]}))
+                 .sort((a,b)=>b.rate-a.rate);
+  })();
+
+  html+=`<div class="card sect"><h2>When it goes wrong</h2>
+    <p class="note" style="margin:-6px 0 2px">Mistakes per 100 of your own moves, so buckets you barely play
+    don't get flattered. Longest bar is your worst condition.</p>`+
+    condBlock("Stage of the game",phaseRows,
+      worstPhase&&worstPhase.l==="Moves 1–12"
+        ? `Your opening is the most dangerous part of your game, not the endgame. That's a repertoire problem more than a tactics problem — the <b>Openings</b> tab is where that gets fixed.`
+        : `Your worst stretch is <b>${worstPhase?esc(worstPhase.l.toLowerCase()):"—"}</b>.`)+
+    condBlock("Type of position",ctxRows,
+      ctxRows.length===2&&ctxRows[0].rate>ctxRows[1].rate*1.25
+        ? `You're steadier when the position forces your hand than when it doesn't. Quiet moves are where you stop checking, so that's where the material goes.`
+        : "")+
+    condBlock("Which piece you moved",pieceRows,
+      pieceRows.length?`You go wrong most often on the move you touch your <b>${esc(pieceRows[0].l.replace("Moved a ",""))}</b>.`:"")+
+    condBlock("Time control",clsRows,
+      clsRows.length>1?`If one line here is much longer than the others, that format is costing you rating you'd keep by not playing it.`:"")+
+  `</div>`;
+
+  // trend
+  const chron=gl.slice().sort((a,b)=>(a.end||0)-(b.end||0));
+  if(chron.length>=8){
+    const q=Math.floor(chron.length/4), parts=[];
+    for(let i=0;i<4;i++){
+      const sub=i<3?chron.slice(i*q,(i+1)*q):chron.slice(3*q);
+      const mv=sub.reduce((s,g)=>s+g.mlog.length,0);
+      const n=sub.reduce((s,g)=>s+leaksOf(g).length,0);
+      if(mv)parts.push({lbl:new Date((sub[0].end||0)*1000).toLocaleDateString([],{month:"short",year:"2-digit"})
+        +" – "+new Date((sub[sub.length-1].end||0)*1000).toLocaleDateString([],{month:"short",year:"2-digit"}),
+        rate:100*n/mv});
+    }
+    const first=parts[0], last=parts[parts.length-1];
+    const better=last.rate<first.rate;
+    html+=`<div class="card sect"><h2>Is it getting better?</h2>
+      <div class="capsum ${better?"good":""}" style="margin-bottom:10px">${
+        better?`You go wrong <b>${Math.round((1-last.rate/first.rate)*100)}% less often</b> per move than when you started
+                — ${first.rate.toFixed(1)} down to ${last.rate.toFixed(1)} mistakes per 100 moves.`
+              :`${first.rate.toFixed(1)} → ${last.rate.toFixed(1)} mistakes per 100 moves. Not moving yet.`}</div>`+
+      condBlock("",parts.map(p=>({l:p.lbl,rate:p.rate})),"Oldest quarter of your games at the top, newest at the bottom.")+
+      `</div>`;
+  }
+
+  el.innerHTML=html;
+  $$("#wkBody [data-leak]").forEach(b=>b.onclick=()=>setFocus(b.dataset.leak));
+}
+
+function renderAll(){renderProgress();renderCapsules();renderGames();renderOpenings();
+  if($("#v-weak").classList.contains("on"))renderWeak();
+  if(!cur||!drillPool().find(d=>d.id===(cur&&cur.id)))startDrill();}
 // during a long sync, redraw at most every few seconds — the final renderAll()
 // after the loop is what guarantees the page ends up correct
 let lastRender=0;
@@ -2542,6 +3071,7 @@ function renderSoon(){
 $$(".tab").forEach(t=>t.onclick=()=>{
   $$(".tab").forEach(x=>x.classList.toggle("on",x===t));
   $$(".view").forEach(v=>v.classList.toggle("on",v.id==="v-"+t.dataset.v));
+  if(t.dataset.v==="weak")renderWeak();
 });
 $("#sync").onclick=()=>sync(false);
 $("#exp").onclick=()=>{
@@ -2579,7 +3109,7 @@ $("#imp").onclick=()=>{
       attempts:Array.isArray(o.attempts)?o.attempts:[],
       oattempts:Array.isArray(o.oattempts)?o.oattempts:[]
     });
-    REPORTS.clear(); cur=null; lastRender=0;
+    REPORTS.clear(); LEAKCACHE.clear(); cur=null; lastRender=0;
     if(save()){
       $("#user").value=DB.user||"";
       applyTheme(DB.theme||"green");
