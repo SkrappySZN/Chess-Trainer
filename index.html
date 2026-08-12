@@ -801,6 +801,30 @@ const esc=(s)=>String(s==null?"":s).replace(/[&<>"']/g,c=>ESCMAP[c]);
 // save() clears it when it prunes.
 const REPORTS=new Map();
 
+/* ---------- coaching games ----------
+   A coach picks a strength that suits the lesson and you play with hints on, so
+   the moves in these games measure the lesson rather than you. They stay in the
+   database and in the game list — they're the games most worth reading back —
+   but every counter, rate and drill leaves them out. Names are matched on the
+   opponent's account, lowercased, because that's the only thing in the API that
+   marks them: chess.com files them as ordinary unrated daily games. */
+const COACHES=["coach-david"];
+const sideName=p=>typeof p==="string"?p:(p&&p.username)||"";
+const isCoachGame=g=>!!g&&(COACHES.includes(sideName(g.white).toLowerCase().trim())||
+                           COACHES.includes(sideName(g.black).toLowerCase().trim()));
+// The one list every aggregate should read. Anything counting DB.games directly
+// is counting coaching games too.
+const realGames=()=>Object.values(DB.games).filter(g=>g&&!isCoachGame(g));
+// Drills built from coaching games before they were excluded are still sitting
+// in the queue. Drop them once, on load and on import.
+function dropCoachDrills(){
+  const bad=new Set(Object.values(DB.games).filter(isCoachGame).map(g=>g.url));
+  if(!bad.size)return 0;
+  const before=DB.drills.length;
+  DB.drills=DB.drills.filter(d=>!bad.has(d.url));
+  return before-DB.drills.length;
+}
+
 /* ---------- storage ----------
    localStorage is ~5MB and each analysed game carries a full move log (a FEN per
    move), so a long history WILL hit the ceiling. Silently swallowing the quota
@@ -853,7 +877,8 @@ function save(){
     }
   }
 }
-function load(){ try{const r=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY); if(r)DB=Object.assign(DB,JSON.parse(r))}catch(e){} }
+function load(){ try{const r=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY); if(r)DB=Object.assign(DB,JSON.parse(r))}catch(e){}
+  if(dropCoachDrills())save(); }
 load();
 
 /* ---------- engine ---------- */
@@ -1490,7 +1515,7 @@ function leaksOf(g){
 }
 function allLeaks(){
   const out=[];
-  Object.values(DB.games).forEach(g=>{ if(g&&g.mlog&&g.mlog.length)out.push(...leaksOf(g)) });
+  realGames().forEach(g=>{ if(g.mlog&&g.mlog.length)out.push(...leaksOf(g)) });
   return out;
 }
 function leakDrill(e){
@@ -1686,7 +1711,9 @@ async function analyseGame(g,user,onProg){
     eco:mEco?mEco[1]:null,
     opening:mName?mName[1].replace(/-/g," "):null,
     obook:hist.slice(0,14).map(m=>m.san),
-    moves:mine,errs,drills,cls:g.time_class,mlog};
+    // The game is still stored and still readable move by move; it just doesn't
+    // put anything into the drill queue.
+    moves:mine,errs,drills:isCoachGame(g)?[]:drills,cls:g.time_class,mlog};
 }
 
 /* ---------- explaining a move concretely ---------- */
@@ -2213,7 +2240,7 @@ const MIN_ERA_MOVES=300;
 // formats makes it look better or worse than another for reasons that aren't skill.
 function bucketGames(keyFn){
   const by={};
-  Object.values(DB.games).forEach(g=>{
+  realGames().forEach(g=>{
     if(!g.end||!g.mlog||!g.mlog.length)return;
     if(g.cls!=="rapid"&&g.cls!=="blitz")return;
     if(g.rated===false)return;
@@ -2255,7 +2282,7 @@ function thinEras(){
 // your own centipawn-loss distribution, taken from every game analysed so far
 function myLossProfile(){
   const out=[];
-  Object.values(DB.games).forEach(g=>(g.mlog||[]).forEach(m=>{
+  realGames().forEach(g=>(g.mlog||[]).forEach(m=>{
     if(typeof m.cpLoss==="number"&&Math.abs(m.eb)<1200)out.push(Math.min(900,m.cpLoss));
   }));
   return out;
@@ -2323,11 +2350,11 @@ function buildSetup(){
   // "2024 exists but has 52 moves" is genuinely useful to know about your own history.
   const thin=thinEras(), note=$("#eraNote");
   if(note){
-    const analysed=Object.values(DB.games).some(g=>g.mlog&&g.mlog.length);
+    const analysed=realGames().some(g=>g.mlog&&g.mlog.length);
     // Buckets only take rated rapid and blitz. Someone who plays nothing but
     // bullet or daily used to get an empty note here — the very silence this
     // block exists to prevent.
-    const excluded=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length&&
+    const excluded=realGames().filter(g=>g.mlog&&g.mlog.length&&
       (g.rated===false||(g.cls!=="rapid"&&g.cls!=="blitz"))).length;
     note.innerHTML = !analysed
       ? `Analyse your history and each year you played enough becomes an opponent here.`
@@ -2947,7 +2974,7 @@ function bookDepth(g){
   return best;
 }
 function openingStats(){
-  const gl=Object.values(DB.games).filter(g=>g.cls!=="vs bot");
+  const gl=realGames().filter(g=>g.cls!=="vs bot");
   const out={w:{games:[],names:{},first:{}}, b:{games:[],names:{},first:{}}};
   for(const g of gl){
     const k=g.isWhite?"w":"b", o=out[k];
@@ -3065,7 +3092,7 @@ function renderProgress(){
   const A=DB.attempts.filter(a=>!a.skipped);
   const acc=A.length?Math.round(100*A.filter(a=>a.correct).length/A.length):0;
   const med=(xs)=>{if(!xs.length)return 0;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
-  const gl=Object.values(DB.games);
+  const gl=realGames();
   const totM=gl.reduce((s,g)=>s+g.moves,0), totE=gl.reduce((s,g)=>s+g.errs,0);
   const byD=attemptsByDrill(), now=Date.now();
   const st=DB.drills.map(d=>drillState(byD[d.id]));
@@ -3175,7 +3202,7 @@ function computeReport(g){
 function renderCapsules(){
   const caps=capsules(), el=$("#capsules"); if(!el)return;
   if(caps.length<1){
-    const analysed=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length).length;
+    const analysed=realGames().filter(g=>g.mlog&&g.mlog.length).length;
     el.innerHTML=`<div class="empty">${analysed
       ? `This only counts rated rapid and blitz, so the months compare fairly — and none of your
          ${analysed} analysed game${analysed===1?"":"s"} qualifies yet.`
@@ -3215,7 +3242,8 @@ function renderGames(){
         <span class="res ${g.result||'none'}" title="${esc(g.how||'result not recorded for this game')}">${res?res[0]:"–"}</span>
         <span class="gname">${esc(g.white)} v ${esc(g.black)}</span>
         <span class="gmeta">${[`${g.moves} moves`,r?`${r.acpl} acpl`:g.trimmed?"detail trimmed":null,
-          `${g.errs} serious`].filter(Boolean).join(" · ")}</span>
+          `${g.errs} serious`,isCoachGame(g)?"coaching game — not counted":null]
+          .filter(Boolean).join(" · ")}</span>
         <span class="gchev">▾</span>
       </div>
       <div class="gbody" id="gb${i}"></div>
@@ -3359,7 +3387,7 @@ function gameCoach(g){
   COACHCACHE.set(key,r);
   return r;
 }
-const coachGames=()=>Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length)
+const coachGames=()=>realGames().filter(g=>g.mlog&&g.mlog.length)
   .sort((a,b)=>(a.end||0)-(b.end||0));
 function sumCoach(gs){
   const t={games:gs.length,moves:0,hangs:0,avail:0,took:0,mateMiss:0};
@@ -3651,8 +3679,8 @@ function setFocus(k){
 function leakRates(pick,labels,ES,filt){
   const err={},tot={};
   labels.forEach(l=>{err[l]=0;tot[l]=0});
-  Object.values(DB.games).forEach(g=>{
-    if(!g||!g.mlog||!g.mlog.length)return;
+  realGames().forEach(g=>{
+    if(!g.mlog||!g.mlog.length)return;
     g.mlog.forEach(m=>{ if(filt&&!filt(m))return;
       const b=pick(m,g); if(b!=null&&tot[b]!=null)tot[b]++ });
   });
@@ -3681,7 +3709,7 @@ function condBlock(title,rows,note){
 }
 function renderWeak(){
   const el=$("#wkBody"); if(!el)return;
-  const gl=Object.values(DB.games).filter(g=>g&&g.mlog&&g.mlog.length);
+  const gl=realGames().filter(g=>g.mlog&&g.mlog.length);
   if(!gl.length){
     el.innerHTML=`<div class="card empty">Analyse your history first — this tab reads every move you
       played and sorts your mistakes by what they actually cost you.</div>`; return;
@@ -3748,7 +3776,7 @@ function drawWeak(el,gl){
   const pieceRows=(()=>{
     const labels=["knight","bishop","rook","queen","pawn","king"];
     const err={},tot={}; labels.forEach(l=>{err[l]=0;tot[l]=0});
-    Object.values(DB.games).forEach(g=>{ if(!g||!g.mlog)return; g.mlog.forEach(m=>{
+    realGames().forEach(g=>{ if(!g.mlog)return; g.mlog.forEach(m=>{
       const c=m.fen&&m.from&&pieceAt(m.fen,m.from);
       if(c&&tot[PNAME[c.toLowerCase()]]!=null)tot[PNAME[c.toLowerCase()]]++ }) });
     ES.forEach(e=>{ if(err[e.piece]!=null)err[e.piece]++ });
@@ -3859,6 +3887,7 @@ $("#imp").onclick=()=>{
       attempts:Array.isArray(o.attempts)?o.attempts:[],
       oattempts:Array.isArray(o.oattempts)?o.oattempts:[]
     });
+    dropCoachDrills();      // an older export can still carry them
     REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear(); cur=null; lastRender=0;
     if(save()){
       $("#user").value=DB.user||"";
