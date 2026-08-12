@@ -507,6 +507,21 @@ ul.bul li{margin:7px 0}
   #v-open .play>div:first-child{width:clamp(260px,min(96vw,calc(100vh - 330px)),900px)}
   .opctl{position:sticky;bottom:0;background:rgba(11,11,10,.9);backdrop-filter:blur(10px);padding:10px 0;z-index:5}
 }
+/* Phones, last so it beats the per-tab board widths above.
+   A square board can never be wider than the screen it's on, so the only room
+   left to give it is the page gutter — run it to both edges. The reserve each
+   tab kept for the chrome above and below goes with it: the page scrolls past
+   that anyway, so shrinking the board to fit it bought nothing. Everything in
+   the column that isn't the board asks for the gutter back. */
+@media(max-width:560px){
+  .main{overflow-x:clip}
+  .play>div:first-child,
+  #v-open .play>div:first-child,
+  .scanwrap>div:first-child{width:100vw}
+  .play>div:first-child>:not(.board):not(.brdwrap),
+  .scanwrap>div:first-child>:not(.board){padding-left:var(--sp-4);padding-right:var(--sp-4)}
+  .play .board,.scanwrap .board{border-radius:0;border-left:0;border-right:0}
+}
 </style></head>
 <body>
 <div class="shell">
