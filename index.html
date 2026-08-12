@@ -65,7 +65,7 @@ b.coin{color:var(--warning)}
 .promopc{background:var(--surface-2);border:1px solid var(--hair);border-radius:10px;cursor:pointer;
  width:62px;height:62px;display:flex;align-items:center;justify-content:center;padding:0}
 .promopc:hover{border-color:var(--s1);background:var(--surface-3)}
-.promopc .pc{font-size:40px}
+.promopc .pc{width:46px;height:46px}
 .colnote{font-size:12px;color:var(--warning);margin-top:7px;min-height:15px}
 .themes{display:flex;gap:6px;margin-top:2px}
 .sw2{width:26px;height:26px;border-radius:6px;border:2px solid transparent;cursor:pointer;padding:0;
@@ -161,7 +161,7 @@ b{color:var(--ink);font-weight:620}
  box-shadow:var(--sh-2)}
 .sq{position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none}
 .sq.l{background:var(--light)}.sq.d{background:var(--dark)}
-.pc{font-size:min(8vw,52px);font-size:10.4cqw;line-height:1;position:relative;z-index:2;pointer-events:none}
+.pc{display:block;flex:none;width:12.2cqw;height:12.2cqw;position:relative;z-index:2;pointer-events:none}
 .pc.drag{opacity:.25}
 .reshead{display:inline-block;font-size:12.5px;font-weight:650;padding:4px 11px;border-radius:99px;margin-bottom:6px}
 .reshead.win{background:rgba(12,163,12,.18);color:#4fc44f}
@@ -211,9 +211,14 @@ b{color:var(--ink);font-weight:620}
 .revitem .rs{font-weight:620;color:var(--ink);min-width:58px}
 .revitem .rd{margin-left:auto;font-size:12px;color:var(--muted)}
 .ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%);line-height:1}
-.pc{filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.34));paint-order:stroke fill}
-.pc.w{color:#fdfdfa;-webkit-text-stroke:.05em #3a3733;text-stroke:.05em #3a3733}
-.pc.b{color:#3a3733;-webkit-text-stroke:.028em #f0f0e6;text-stroke:.028em #f0f0e6}
+.pc{filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.34))}
+.pc path,.pc circle{stroke-linejoin:round;stroke-linecap:round}
+.pc.w{fill:#fdfdfa;stroke:#312e2b;stroke-width:1.5}
+.pc.b{fill:#3a3733;stroke:#f0f0e6;stroke-width:1.3}
+.pc .ln{fill:none;stroke-width:1.5}          /* rook bands, bishop slit, king cross */
+.pc .cr{stroke-width:2.8}
+.pc.w .ey{fill:#312e2b;stroke:none}          /* the knight's eye, always the outline colour */
+.pc.b .ey{fill:#f0f0e6;stroke:none}
 .ghost{filter:drop-shadow(0 6px 7px rgba(0,0,0,.45))}
 .sq.sel::after,.sq.hint::after,.sq.ok::after,.sq.bad::after{content:"";position:absolute;inset:0;z-index:1;opacity:.55}
 /* Highlights are recreated on every render, so they fade in rather than blink.
@@ -778,7 +783,37 @@ ul.bul li{margin:7px 0}
 </div>
 <script type="module">
 const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
-const FILES="abcdefgh", GLYPH={k:"♚",q:"♛",r:"♜",b:"♝",n:"♞",p:"♟"};
+const FILES="abcdefgh";
+/* Pieces are drawn, not typed. The Unicode chess characters render out of
+   whichever font the OS falls back to, and on iOS that's a set where a pawn, a
+   bishop and a king all collapse into the same dark blob at board size — and
+   where the text-stroke trick that made a white piece white does nothing.
+   These paths are the same shape on every device. 45x45 box, piece from y=3
+   (the king's cross) to y=38.5 (the base every piece stands on). */
+const PC_BASE=`<path d="M11.4 32.2h22.2c2 1.9 3.1 4 3.3 6.3H8.1c.2-2.3 1.3-4.4 3.3-6.3z"/>`;
+const PIECE={
+  p:`<circle cx="22.5" cy="12" r="4.8"/>`+
+    `<path d="M18.7 15.9c2.5 1.4 5.1 1.4 7.6 0 1 1.7.6 3.3-1 4.5 2.2 2.6 4.2 7.1 5.1 11.5H14.6c.9-4.4 2.9-8.9 5.1-11.5-1.6-1.2-2-2.8-1-4.5z"/>`+
+    `<path d="M14.6 31.9h15.8c2.2 1.9 3.5 4 3.7 6.6H10.9c.2-2.6 1.5-4.7 3.7-6.6z"/>`,
+  r:`<path d="M12.6 9.6h4.2v3.2h4.1V9.6h3.2v3.2h4.1V9.6h4.2V17l-3 2.6V29l3.4 3.1H12.2l3.4-3.1V19.6l-3-2.6V9.6z"/>`+
+    `<path class="ln" d="M15.6 19.6h13.8M15.6 29h13.8"/>`+PC_BASE,
+  n:`<path d="M30.6 32.2C31.8 25 30.6 19 26.2 15.2 24.6 13.6 22 12.4 19.8 12.2L18.4 8.2 16.9 12 15.3 8.9 14.1 12.8C12.7 15.6 10.9 17.6 10.3 20.7 9.8 22.9 10.9 24 12.9 24.2 15.7 24.5 17.9 24.3 19.3 23.3 20.7 26.6 21.3 29 21.5 32.2Z"/>`+
+    `<circle class="ey" cx="16.4" cy="15.9" r="1.25"/>`+PC_BASE,
+  b:`<circle cx="22.5" cy="6.8" r="2.1"/>`+
+    `<path d="M22.5 9.2C24.4 12.2 27.4 15 28.8 18 30.6 21.8 29.6 26.2 26.4 28.6H18.6C15.4 26.2 14.4 21.8 16.2 18 17.6 15 20.6 12.2 22.5 9.2Z"/>`+
+    `<path class="ln cr" d="M19.6 22.6 25.4 15.6"/>`+
+    `<path d="M17.4 28.6h10.2c1.9 1.3 2.7 2.5 2.4 3.6H15c-.3-1.1.5-2.3 2.4-3.6z"/>`+PC_BASE,
+  q:`<path d="M11.7 28.6 7.8 15.2 13.4 21.4 14.9 11 19.4 21 22.5 9 25.6 21 30.1 11 31.6 21.4 37.2 15.2 33.3 28.6Z"/>`+
+    `<circle cx="7.8" cy="13.6" r="2"/><circle cx="14.9" cy="9.4" r="2"/><circle cx="22.5" cy="7" r="2.2"/><circle cx="30.1" cy="9.4" r="2"/><circle cx="37.2" cy="13.6" r="2"/>`+
+    `<path class="ln" d="M13.1 25.4h18.8"/>`+
+    `<path d="M11.7 28.6h21.6c1.4 1.3 2 2.4 1.8 3.6H9.9c-.2-1.2.4-2.3 1.8-3.6z"/>`+PC_BASE,
+  k:`<path d="M22.5 12.2C24.7 12.2 26.4 13.8 26.4 15.7 26.4 17.1 25.7 18.3 24.6 19 29.4 20.5 33.2 25.2 33.4 32.2H11.6C11.8 25.2 15.6 20.5 20.4 19 19.3 18.3 18.6 17.1 18.6 15.7 18.6 13.8 20.3 12.2 22.5 12.2Z"/>`+
+    `<path class="ln cr" d="M22.5 3.8v9M17.7 7.8h9.6"/>`+
+    `<path class="ln" d="M14.8 26.4c5.1-1.8 10.4-1.8 15.4 0"/>`+PC_BASE,
+};
+// `type` is a lowercase piece letter; `white` picks the fill/outline pair.
+const pieceSVG=(type,white,extra="")=>
+  `<svg class="pc ${white?'w':'b'}${extra}" viewBox="0 0 45 45" aria-hidden="true">${PIECE[type]}</svg>`;
 const CDN_CHESS="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js";
 const CDN_SF="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js";
 const DEPTH=12, THRESH=15;           // win% drop that counts as a "serious" error
@@ -1116,7 +1151,7 @@ function renderBoard(el,fen,flip,marks={},arrows=null){
       h+=`<div class="sq ${dark?'d':'l'}${cls}" data-sq="${name}">`;
       if((flip? ff===7 : ff===0))h+=`<span class="coord r">${8-r}</span>`;
       if((flip? r===0 : r===7))h+=`<span class="coord f">${FILES[ff]}</span>`;
-      if(pc){const w=pc===pc.toUpperCase();h+=`<span class="pc ${w?'w':'b'}">${GLYPH[pc.toLowerCase()]}</span>`;
+      if(pc){h+=pieceSVG(pc.toLowerCase(),pc===pc.toUpperCase());
         if(marks[name]==="dotm")h+=`<span class="ring"></span>`}
       else if(marks[name]==="dotm")h+=`<span class="dot"></span>`;
       h+=`</div>`;
@@ -1154,8 +1189,11 @@ function wireBoardInput(el,api){
     from=name; moved=false; sx=ev.clientX; sy=ev.clientY;
     const pc=el.querySelector('.sq[data-sq="'+name+'"] .pc');   // board just re-rendered
     if(pc){
-      ghost=pc.cloneNode(true); ghost.className="pc ghost "+(pc.classList.contains("w")?"w":"b");
-      ghost.style.fontSize=getComputedStyle(pc).fontSize;
+      ghost=pc.cloneNode(true); ghost.setAttribute("class","pc ghost "+(pc.classList.contains("w")?"w":"b"));
+      // the ghost lives on <body>, outside the board's container query, so it
+      // needs the size it had on the board handed to it
+      const cs=getComputedStyle(pc);
+      ghost.style.width=cs.width; ghost.style.height=cs.height;
       ghost.style.left=ev.clientX+"px"; ghost.style.top=ev.clientY+"px";
       document.body.appendChild(ghost); pc.classList.add("drag");
     }
@@ -2435,7 +2473,7 @@ function askPromotion(color){
   return new Promise(res=>{
     const el=$("#promo");
     $("#promoRow").innerHTML=["q","r","b","n"].map(p=>
-      `<button class="promopc" data-p="${p}" title="${({q:"Queen",r:"Rook",b:"Bishop",n:"Knight"})[p]}"><span class="pc ${color}">${GLYPH[p]}</span></button>`).join("");
+      `<button class="promopc" data-p="${p}" title="${({q:"Queen",r:"Rook",b:"Bishop",n:"Knight"})[p]}">${pieceSVG(p,color==="w")}</button>`).join("");
     const done=(p)=>{ el.style.display="none"; document.removeEventListener("keydown",key); res(p); };
     const key=(e)=>{ const p={q:"q",r:"r",b:"b",n:"n"}[e.key.toLowerCase()];
       if(p)done(p); else if(e.key==="Escape")done("q"); };
