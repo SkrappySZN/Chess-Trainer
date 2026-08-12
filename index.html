@@ -3606,9 +3606,16 @@ function renderScan(){
   } else SCAN.picked.forEach(sq=>marks[sq]="pick");
   const right=SCAN.done&&SCAN.ans.size===SCAN.picked.size&&[...SCAN.ans].every(s=>SCAN.picked.has(s));
   const def=SCAN.mode==="def";
+  // "your pieces" and "his pieces" only mean something once you know which side
+  // you are. The board is drawn from your side, but that's a thing you have to
+  // work out rather than read — so say it, the way Train and Play already do.
+  const hw=SCAN.hero==="w";
   el.innerHTML=`<div class="scanwrap">
     <div><div class="board" id="scanBoard"></div></div>
     <div>
+      <div style="margin-bottom:var(--sp-3)"><span class="turnchip">
+        <span class="dot2" style="background:${hw?'#fbfbf8':'#17171a'}"></span>You're ${hw?"White":"Black"}
+      </span></div>
       <p class="scanq">${def?"He has just moved. Click every one of <b>your</b> pieces he can win material on."
                            :"It's your move. Click every one of <b>his</b> pieces you can win material on."}</p>
       <div class="scanscore"><span>Position <b>${SCANSTAT.n+(SCAN.done?0:1)}</b></span>
