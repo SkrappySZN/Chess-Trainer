@@ -355,6 +355,13 @@ td{color:var(--ink-2)}td:first-child{color:var(--ink)}
 .gmeter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-2);opacity:.55;border-radius:2px}
 .gfoot{font-size:var(--t-xs);color:var(--muted);display:flex;justify-content:space-between;gap:10px}
 .gfoot em{font-style:normal;color:var(--ink-2)}
+/* The trend sits below the hairline so the card reads as "where you are" first
+   and "how you got here" second — that order is the whole argument of the card. */
+.gtrend{margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--hair)}
+.gtrend svg{display:block;width:100%;height:auto;overflow:visible}
+.gtrend rect[fill=transparent]{cursor:crosshair}
+.tfoot{font-size:var(--t-xs);color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.tfoot em{font-style:normal;color:var(--ink-2)}
 .stage{display:grid;grid-template-columns:26px 1fr auto;gap:14px;align-items:start;
  padding:15px 0;border-bottom:1px solid var(--hair)}
 .stage:last-child{border-bottom:0}
@@ -3450,17 +3457,28 @@ function sumCoach(gs){
   t.convRate=t.avail>=8?100*t.took/t.avail:null;   // too few chances to be a rate
   return t;
 }
+// The same number the card shows, walked forward through your history one game
+// at a time. A card that only ever shows today's figure can't tell you whether
+// today is any good — this is the line that can.
+function rollingSeries(gs,pick,win){
+  const out=[];
+  for(let i=0;i+win<=gs.length;i++){
+    const sub=gs.slice(i,i+win), v=pick(sumCoach(sub));
+    if(v!=null)out.push({v,end:sub[sub.length-1].end||0});
+  }
+  return out;
+}
+// Below 20 games there's no 20-game window to draw, so the line uses a shorter
+// one and says so. The headline number above it stays on its own window.
+const trendWin=gs=>gs.length>=COACH_WIN+3?COACH_WIN:Math.max(6,Math.floor(gs.length/2));
+const mon=t=>t?new Date(t*1000).toLocaleDateString([],{month:"short",year:"2-digit"}):"";
+
 // Your own best stretch, which is a nearer and more motivating bar than the
 // target — and unlike the target it can't be argued with.
 function bestWindow(gs,pick,lower){
   if(gs.length<COACH_WIN)return null;
-  let best=null;
-  for(let i=0;i+COACH_WIN<=gs.length;i++){
-    const v=pick(sumCoach(gs.slice(i,i+COACH_WIN)));
-    if(v==null)continue;
-    if(best==null||(lower?v<best:v>best))best=v;
-  }
-  return best;
+  const v=rollingSeries(gs,pick,COACH_WIN).map(p=>p.v);
+  return v.length?(lower?Math.min(...v):Math.max(...v)):null;
 }
 
 // Ordered on purpose. Each stage stays in your way until its number moves,
@@ -3498,7 +3516,55 @@ function currentStage(s){
   return STAGES.length-1;
 }
 
-function meter(cur,target,base,lower,label,best,unit){
+/* One line, one number, and the band you're trying to live in shaded behind it.
+   No dot on every point — a hundred dots is noise, and only the last one is
+   news. The target is drawn inside the y-range on purpose: a trend that never
+   shows the bar it's heading for is just a wiggle. */
+function trend(pts,target,lower,unit,win){
+  if(!pts||pts.length<4)return "";
+  const W=300,H=80,PL=2,PR=36,PT=10,PB=16;
+  const dec=unit==="%"?0:1, fmt=v=>v.toFixed(dec);
+  const vs=pts.map(p=>p.v);
+  let lo=Math.min(target,...vs), hi=Math.max(target,...vs);
+  const pad=(hi-lo)*.18||1; lo-=pad; hi+=pad;
+  // Leave the good side of the target real estate, or the band you're aiming
+  // for shows up as a one-pixel sliver and says nothing.
+  const room=(hi-lo)*.18;
+  if(lower)lo=Math.min(lo,target-room); else hi=Math.max(hi,target+room);
+  const X=i=>PL+(i/(pts.length-1))*(W-PL-PR);
+  const Y=v=>PT+(1-(v-lo)/(hi-lo))*(H-PT-PB);
+  const ty=Y(target), last=pts[pts.length-1], first=pts[0];
+  const good=lower?last.v<=target:last.v>=target;
+  const bY=lower?ty:PT, bH=lower?(H-PB)-ty:ty-PT;
+  const d=pts.map((p,i)=>(i?"L":"M")+X(i).toFixed(1)+" "+Y(p.v).toFixed(1)).join(" ");
+  const step=(W-PL-PR)/(pts.length-1);
+  const hov=pts.length<=140?pts.map((p,i)=>
+    `<rect x="${(X(i)-step/2).toFixed(1)}" y="${PT}" width="${step.toFixed(1)}" height="${H-PT-PB}"
+      fill="transparent"><title>${mon(p.end)}: ${fmt(p.v)}${unit==="%"?"%":""}</title></rect>`).join(""):"";
+  return `<div class="gtrend">
+    <svg viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="rolling ${win}-game trend, ${fmt(first.v)} to ${fmt(last.v)}">
+      <rect x="${PL}" y="${bY.toFixed(1)}" width="${W-PL-PR}" height="${Math.max(0,bH).toFixed(1)}"
+        fill="var(--good)" opacity=".07"/>
+      <line x1="${PL}" y1="${ty.toFixed(1)}" x2="${W-PR}" y2="${ty.toFixed(1)}"
+        stroke="var(--good)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>
+      ${Math.abs(ty-Y(last.v))>11?`<text x="${W-PR+4}" y="${ty.toFixed(1)}" dy="3.5"
+        fill="var(--muted)" font-size="9">target</text>`:""}
+      <path d="${d}" fill="none" stroke="var(--s1)" stroke-width="2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${X(pts.length-1).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4"
+        fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${W-PR+4}" y="${Y(last.v).toFixed(1)}" dy="3.5"
+        fill="${good?"var(--good)":"var(--ink-2)"}" font-size="11" font-weight="600">${fmt(last.v)}</text>
+      <text x="${PL}" y="${H-4}" fill="var(--muted)" font-size="9">${mon(first.end)}</text>
+      <text x="${W-PR}" y="${H-4}" fill="var(--muted)" font-size="9" text-anchor="end">now</text>
+      ${hov}
+    </svg>
+    <div class="tfoot">rolling ${win} games · was <em>${fmt(first.v)}</em>, now <em>${fmt(last.v)}</em></div>
+  </div>`;
+}
+
+function meter(cur,target,base,lower,label,best,unit,pts,win){
   const pct=cur==null?0:Math.max(0,Math.min(100,100*(lower?(base-cur)/(base-target):(cur-base)/(target-base))));
   const good=cur!=null&&(lower?cur<=target:cur>=target);
   const col=good?"var(--good)":pct>=55?"var(--warning)":"var(--critical)";
@@ -3508,6 +3574,7 @@ function meter(cur,target,base,lower,label,best,unit){
     <div class="gmeter"><i style="width:${pct.toFixed(0)}%;background:${col}"></i></div>
     <div class="gfoot"><span>${best!=null?`your best 20: <em>${best.toFixed(unit==="%"?0:1)}</em>`:"&nbsp;"}</span>
       <span>target <em>${lower?"under ":""}${target}${unit==="%"?"%":""}</em></span></div>
+    ${trend(pts,target,lower,unit,win)}
   </div>`;
 }
 
@@ -3523,6 +3590,8 @@ function renderCoach(){
   }
   const win=gs.slice(-COACH_WIN), s=sumCoach(win), lifetime=sumCoach(gs);
   const bestHang=bestWindow(gs,x=>x.hangRate,true), bestConv=bestWindow(gs,x=>x.convRate,false);
+  const tw=trendWin(gs);
+  const trHang=rollingSeries(gs,x=>x.hangRate,tw), trConv=rollingSeries(gs,x=>x.convRate,tw);
   const i=currentStage(s), st=STAGES[i];
 
   const buttons=st.go.map(g=>`<button class="btn ${g===st.go[0]?"pri":""}"
@@ -3548,12 +3617,13 @@ function renderCoach(){
   </div>
 
   <div class="goal">
-    ${meter(s.hangRate,T_HANG,B_HANG,true,"Pieces you give away, per 100 moves",bestHang,"per 100 moves")}
-    ${meter(s.convRate,T_CONV,B_CONV,false,"Offered material you actually take",bestConv,"%")}
+    ${meter(s.hangRate,T_HANG,B_HANG,true,"Pieces you give away, per 100 moves",bestHang,"per 100 moves",trHang,tw)}
+    ${meter(s.convRate,T_CONV,B_CONV,false,"Offered material you actually take",bestConv,"%",trConv,tw)}
   </div>
   <p class="note" style="margin:-6px 0 18px">Measured over your last ${s.games} analysed game${s.games===1?"":"s"}
-    (${s.moves.toLocaleString()} of your moves), not over drills. These two move before your rating does —
-    rating is the lagging indicator, these are the leading ones.</p>
+    (${s.moves.toLocaleString()} of your moves), not over drills.${trHang.length>=4?` The lines are the same
+    two numbers walked back through your history, so a bad week reads as a bad week rather than as a verdict.`:""}
+    These two move before your rating does — rating is the lagging indicator, these are the leading ones.</p>
 
   <div class="card sect">
     <h2>Your route to a stronger game</h2>
