@@ -1675,15 +1675,17 @@ async function sync(auto){
     if(fresh.length)stat(`${fresh.length} new game${fresh.length>1?"s":""} — analysing…`,"new");
     try{ DB.stats=await getJSON(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/stats`,1); }catch(e){}
 
-    let done=0;
+    // count the games we're actually going to analyse, not the ones we walked
+    // past — otherwise one new game inside a batch of ten reads as "10/10".
+    let done=0; const todo=fresh.length;
     $("#stopSync").style.display="block";
     for(const g of games){
       if(STOP){ log("stopped by you — progress kept"); break; }
-      if(DB.games[g.url]){done++;continue}
+      if(DB.games[g.url])continue;
       log(`analysing ${esc(g.white.username)} v ${esc(g.black.username)}…`);
-      stat(`analysing game ${done+1}/${games.length} — ${g.white.username} v ${g.black.username}`,"busy");
+      stat(`analysing game ${done+1}/${todo} — ${g.white.username} v ${g.black.username}`,"busy");
       const rec=await analyseGame(g,user,(f)=>{
-        $("#pbar").style.width=Math.round(((done+f)/games.length)*100)+"%";
+        $("#pbar").style.width=Math.round(((done+f)/todo)*100)+"%";
       });
       if(rec){
         DB.games[g.url]=rec; DB.drills=DB.drills.concat(rec.drills);
@@ -1692,12 +1694,12 @@ async function sync(auto){
         if(!save()){ log("storage is full — stopping here so nothing else is wasted"); break; }
         renderSoon();
       }
-      done++; $("#pbar").style.width=Math.round((done/games.length)*100)+"%";
+      done++; $("#pbar").style.width=Math.round((done/todo)*100)+"%";
     }
     log("done.");
     DB.lastSync=Date.now();
-    stat(fresh.length?`added ${fresh.length} game${fresh.length>1?"s":""} · ${DB.drills.length} drills total`
-                     :"up to date", fresh.length?"new":"");
+    stat(done?`added ${done} game${done>1?"s":""} · ${DB.drills.length} drills total`
+              :"up to date", done?"new":"");
   }catch(e){ const msg=(e&&e.message)||String(e);
     log("ERROR "+esc(msg)); stat(msg.slice(0,80),""); }
   $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; STOP=false; save(); renderAll(); buildSetup();
