@@ -1610,6 +1610,11 @@ async function getJSON(url,tries=3){
     throw new Error("chess.com returned "+r.status);
   }
 }
+// "up to date" is a claim about chess.com, so only say it after actually
+// asking. When we skip the check we say when we last looked instead.
+const SYNC_THROTTLE=90000;
+const staleEnough=()=>!DB.lastSync||Date.now()-DB.lastSync>SYNC_THROTTLE;
+const clock=t=>new Date(t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
 async function sync(auto){
   const user=$("#user").value.trim().toLowerCase()||DB.user;
   if(!user){ stat("set a username first",""); showWelcome(); return; }
@@ -1670,7 +1675,7 @@ async function sync(auto){
     const fresh=games.filter(g=>!DB.games[g.url]);
     log(`found ${games.length} recent games (${fresh.length} new)`);
     if(auto&&!fresh.length){ renderGames();
-      stat(filled?`filled in ${filled} result${filled>1?"s":""}`:"up to date · "+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}), filled?"new":""); 
+      stat(filled?`filled in ${filled} result${filled>1?"s":""}`:"up to date · "+clock(Date.now()), filled?"new":""); 
       $("#sync").disabled=false; $("#pwrap").style.display="none"; $("#stopSync").style.display="none"; DB.lastSync=Date.now(); save(); return; }
     if(fresh.length)stat(`${fresh.length} new game${fresh.length>1?"s":""} — analysing…`,"new");
     try{ DB.stats=await getJSON(`https://api.chess.com/pub/player/${encodeURIComponent(user)}/stats`,1); }catch(e){}
@@ -4162,8 +4167,15 @@ boot().then(()=>{
         if(!known && !DB.skipped){ showWelcome(); return; }
         if(!known){ stat("no account set",""); return; }
         // look for games played since last time, without being asked
-        if(!DB.lastSync||Date.now()-DB.lastSync>90000) setTimeout(()=>sync(true),400);
-        else stat("up to date","");
+        if(staleEnough()) setTimeout(()=>sync(true),400);
+        else stat("checked "+clock(DB.lastSync),"");
+        // Auto-sync used to fire only here, at boot, so a tab left open all
+        // afternoon never noticed a game you'd just finished. Check again when
+        // you come back to it — same throttle, so flicking between tabs can't
+        // hammer chess.com.
+        document.addEventListener("visibilitychange",()=>{
+          if(document.visibilityState==="visible"&&DB.user&&staleEnough())sync(true);
+        });
       })
       .catch(e=>{ $("#who").textContent="engine failed to load — check your connection"; });
 </script>
