@@ -696,6 +696,10 @@ ul.bul li{margin:7px 0}
     <p class="note">This is the number to watch. If double-attack accuracy climbs, the thing costing you games is getting fixed.</p>
   </div>
   <div class="card sect">
+    <h2>What your thinking time buys you</h2>
+    <div id="clockPanel"><div class="empty">Sync some games first.</div></div>
+  </div>
+  <div class="card sect">
     <h2>Serious errors per game, over time</h2>
     <div id="errChart"><div class="empty">Sync some games first.</div></div>
     <p class="note">One dot per analysed game, oldest on the left. Lower is better. This is measured from your real games, not from drills.</p>
@@ -1669,6 +1673,19 @@ async function sync(auto){
                if(t.load_pgn(pgn.split(/\n\n/).pop())){ known.obook=t.history().slice(0,14); ch=true; } }catch(e){}
         }
       }
+      // Clock stamps live in the PGN, not the engine pass, so games analysed
+      // before this existed can be filled in on a plain sync — no re-analysis.
+      if(known.mlog&&known.mlog.length&&known.mlog[0].t===undefined){
+        const sp=clockSpend(g);
+        if(sp){
+          let n=0;
+          for(const m of known.mlog){
+            const i=(m.n-1)*2+(known.isWhite?0:1);
+            if(sp[i]!=null){ m.t=sp[i]; n++ }
+          }
+          if(n){ ch=true }
+        }
+      }
       if(ch)filled++;
     }
     if(filled){ save(); log(`filled in results for ${filled} earlier game${filled>1?"s":""}`); }
@@ -1717,6 +1734,25 @@ function resultOf(g,user){
   const result = raw==="win" ? "win" : DRAWCODES.includes(raw) ? "draw" : raw ? "loss" : "";
   return {result,how:raw};
 }
+/* chess.com ships a [%clk] stamp on every ply and we used to throw all of it
+   away. It's the only record of what you were actually doing at the board —
+   which move you rushed, which one you burned two minutes on and got wrong. */
+function clockSpend(g,plies){
+  const raw=[...String(g.pgn||"").matchAll(/%clk\s+(\d+):(\d+):([\d.]+)/g)]
+    .map(m=>(+m[1])*3600+(+m[2])*60+parseFloat(m[3]));
+  if(plies==null)plies=raw.length;
+  if(!raw.length||raw.length<plies)return null;    // daily games carry no usable clock
+  const tc=String(g.time_control||"");
+  const base=parseInt(tc,10)||0;
+  const inc=tc.includes("+")?(parseInt(tc.split("+")[1],10)||0):0;
+  const out=[];
+  for(let i=0;i<plies;i++){
+    const prev = i>=2 ? raw[i-2]+inc : base;       // same side's clock before this move
+    const spent = prev-raw[i];
+    out.push(spent>=0&&spent<7200 ? Math.round(spent*10)/10 : null);
+  }
+  return out;
+}
 async function analyseGame(g,user,onProg){
   const isWhite=g.white.username.toLowerCase()===user;
   const hero=isWhite?"w":"b";
@@ -1726,6 +1762,7 @@ async function analyseGame(g,user,onProg){
   const hist=ch.history({verbose:true});
   const sim=new Chess();
   const drills=[]; let errs=0, mine=0; const mlog=[];
+  const spend=clockSpend(g,hist.length);
   for(let i=0;i<hist.length;i++){
     const mv=hist[i];
     if(sim.turn()!==hero){ sim.move(mv.san); continue; }
@@ -1753,6 +1790,7 @@ async function analyseGame(g,user,onProg){
     try{ const t=new Chess(fen); const bm=t.move({from:r1.best.slice(0,2),to:r1.best.slice(2,4),promotion:'q'});
          rec.bestSan=bm?bm.san:r1.best; rec.motif=classify(fen,r1.best); }catch(e){}
     rec.top = playedUci===r1.best.slice(0,4);
+    if(spend&&spend[i]!=null)rec.t=spend[i];
     mlog.push(rec);
     if(drop>=THRESH && playedUci!==r1.best){
       errs++;
@@ -2746,6 +2784,59 @@ const STUDIES=[
     {san:"O-O", why:"Castle. Identical structure to the main line — which is exactly why this repertoire is worth learning: everything funnels into one position type."}
   ]}]},
 
+{ id:"london-w", name:"London System", color:"w", eco:"D02",
+  blurb:"One setup against almost anything Black plays. Bishop out early, castled by move eight, and the same plan waiting on the other side.",
+  idea:"Bishop to f4 before the e-pawn moves, then e3, Nf3, c3, Bd3, Nbd2 and castle. You are not trying to refute anything — you are reaching the same good position every game, so that by move ten you are playing chess instead of remembering.",
+  lines:[
+  { name:"Main line — the full setup", plies:[
+    {san:"d4",  why:"Take your half of the centre. Unlike 1.e4, this pawn is defended the moment it lands, which is the whole character of the opening you're about to play."},
+    {san:"d5",  why:"Black claims an equal share. The most common reply and the one the setup is built against."},
+    {san:"Bf4", why:"<b>This is the London, and the move order matters.</b> The bishop comes out <i>before</i> the e-pawn.<br><br>Play e3 first and this bishop spends the rest of the game behind its own pawn chain — the single mistake that ruins this opening."},
+    {san:"Nf6", why:"Black develops and eyes the centre. Nothing has changed for you."},
+    {san:"e3",  why:"<b>Now</b> the pawn. It supports d4 and opens the other bishop, and your good bishop is already outside the chain where it belongs."},
+    {san:"e6",  why:"Black shuts in their own light-squared bishop — the mistake you just avoided by playing Bf4 first."},
+    {san:"Nf3", why:"Develop, and look at <b>e5</b>. That square is the outpost this whole structure is built to occupy later."},
+    {san:"Be7", why:"A quiet developing move. Black is heading for a solid but passive setup."},
+    {san:"Bd3", why:"The bishop takes aim at <b>h7</b>. Together with a knight on e5 that becomes a real attack — and castling is now legal."},
+    {san:"O-O", why:"Black castles first. Now you know which side to aim at."},
+    {san:"Nbd2",why:"<b>d2, never c3.</b> The knight looks more natural on c3, but that square belongs to the c-pawn — and the pawn is what holds your centre together.<br><br>From d2 the knight also supports e4 and can swing to f3 or c4 later."},
+    {san:"c5",  why:"Black hits d4, the standard freeing try. You have a pawn ready for exactly this."},
+    {san:"c3",  why:"Hold the centre. The pawn does two jobs: it props up d4, and it opens <b>b3</b> for your queen the moment Black plays ...Qb6.<br><br>Don't take on c5 — you'd be trading your best pawn for nothing."},
+    {san:"Nc6", why:"Black finishes developing and piles onto d4."},
+    {san:"O-O", label:"The setup", why:"<b>Castled on move eight.</b> Every piece has a job, your king is safe, and you have not had to calculate anything yet.<br><br>Now the plan begins: knight to e5, bishop back to g3, then f4 and the rook lift Rf1–f3–h3."}
+  ]},
+  { name:"When Black hits b2 with ...Qb6", plies:[
+    {san:"d4"},{san:"d5"},{san:"Bf4"},{san:"Nf6"},{san:"e3"},
+    {san:"c5",  why:"Black goes for the centre immediately instead of developing."},
+    {san:"c3",  why:"On schedule. The same move you were always going to play."},
+    {san:"Qb6", label:"The b2 raid", why:"<b>The most common annoyance in the whole opening.</b> The queen hits b2, which your bishop left undefended when it went to f4.<br><br>Don't defend it with Qc1 or b3 — there's a much better answer, and it's available precisely because you played c3."},
+    {san:"Qb3", why:"<b>Offer the trade.</b> Your queen is defended and hers isn't doing anything useful.<br><br>If she avoids the trade, she has wasted two moves and you develop with gain of time. If she takes, look at what happens next."},
+    {san:"Qxb3",why:"Black takes."},
+    {san:"axb3",why:"<b>Recapture with the a-pawn, not the c-pawn.</b> Your rook now has the open a-file for free, your centre is untouched, and Black's early queen raid achieved nothing at all.<br><br>This is why the queens coming off does not scare you — you were never attacking, you were building."}
+  ]},
+  { name:"When Black chases the bishop with ...Nh5", plies:[
+    {san:"d4"},{san:"d5"},{san:"Bf4"},{san:"Nf6"},{san:"e3"},{san:"e6"},{san:"Nf3"},
+    {san:"Nh5", label:"Chasing the bishop", why:"Black tries to win the bishop pair by kicking your good bishop. It looks annoying and it isn't."},
+    {san:"Bg3", why:"<b>Step back to g3.</b> The bishop still watches the same diagonal and is perfectly safe there.<br><br>Retreating to e5 or g5 instead walks into problems — g3 is the square."},
+    {san:"Nxg3",why:"Black takes the bishop."},
+    {san:"hxg3",label:"The h-file", why:"<b>Take towards the centre with the h-pawn.</b><br><br>Black has spent three knight moves to win a bishop, and handed you an open <b>h-file pointing straight at the king they are about to castle behind</b>. Your rook on h1 is already on it without moving.<br><br>This is a trade you should be happy to make every single game."}
+  ]},
+  { name:"Against a kingside fianchetto", plies:[
+    {san:"d4"},
+    {san:"Nf6", why:"Black delays ...d5 and keeps options open."},
+    {san:"Bf4", why:"Same move, same reason. This is the point of a system — you are not waiting to see what they do."},
+    {san:"g6",  label:"Fianchetto", why:"Black heads for a King's Indian setup, with the bishop going to g7 to stare down the long diagonal at your d4 pawn."},
+    {san:"e3"},
+    {san:"Bg7", why:"There it is. That bishop is Black's best piece, and everything you do now should keep d4 solid."},
+    {san:"Nf3"},
+    {san:"O-O", why:"Black castles into the setup they wanted."},
+    {san:"Be2", why:"<b>e2 here, not d3.</b> Against this setup the bishop has nothing to attack on d3 — h7 is covered by nobody because Black's king sits behind a fianchetto, not a normal pawn shield.<br><br>On e2 it is safe and supports the plan of h3 and O-O."},
+    {san:"d6"},
+    {san:"h3",  why:"<b>A quiet, important move.</b> It gives your f4 bishop the h2 square if Black ever plays ...Nh5, and it stops ...Bg4 pinning your knight.<br><br>One tempo now saves a tangle later."},
+    {san:"Nbd7"},
+    {san:"O-O", why:"<b>Castled by move seven this time.</b> Different Black setup, same White position, same plan — c3, Ne5, and play on the queenside or the centre where their fianchettoed bishop isn't looking."}
+  ]}]},
+
 { id:"open-b", name:"The Open Game", color:"b", eco:"C50",
   blurb:"Your Black repertoire against 1.e4. The same structure as your White opening, seen from the other side.",
   idea:"Meet 1.e4 with 1...e5, develop knights first, and mirror White's setup. Because you know this structure as White, you already know what your opponent is trying to do.",
@@ -2868,8 +2959,17 @@ function studyPositions(st){
   })(studyTree(st).root);
   return out;
 }
-const allPositions=()=>STUDIES.flatMap(studyPositions);
+const allPositions=()=>activeStudies().flatMap(studyPositions);
 const studyById=(id)=>STUDIES.find(s=>s.id===id);
+/* Two full White repertoires can't both be true at once — practising the one you
+   no longer play is worse than not practising at all, and it makes "did you stay
+   in your book?" meaningless. DB.repW names the one you've committed to; until
+   you pick, everything stays active exactly as before. */
+function activeStudies(){
+  const chosen=DB.repW&&studyById(DB.repW);
+  if(!chosen||chosen.color!=="w")return STUDIES;
+  return STUDIES.filter(s=>s.color!=="w"||s.id===DB.repW);
+}
 
 /* ---------- openings: progress ---------- */
 const oIndex=()=>attemptsIndex(DB.oattempts||[]);
@@ -3031,7 +3131,7 @@ function prAnswer(from,to,gaveUp){
 // how many plies of a game match some line in your repertoire for that colour
 function bookDepth(g){
   const sans=g.obook; if(!sans||!sans.length)return null;
-  const mine=STUDIES.filter(s=>s.color===(g.isWhite?"w":"b"));
+  const mine=activeStudies().filter(s=>s.color===(g.isWhite?"w":"b"));
   let best=0;
   for(const st of mine){
     let n=studyTree(st).root, d=0;
@@ -3072,9 +3172,24 @@ function renderStudies(){
   $("#studyPick").innerHTML=
     `<div class="opnote">Pick a line and walk it move by move. The board plays your opponent; you find your
       own moves and get the reason for each one. <b>Learn</b> teaches, <b>Practice</b> makes it stick.</div>
-     <h2 style="margin-top:22px">As White</h2><div class="studies">${grp("w").map(card).join("")}</div>
+     <h2 style="margin-top:22px">As White</h2>
+     ${grp("w").length>1?`<div class="opnote${DB.repW?" good":" warn"}">
+       ${DB.repW?`Your White repertoire is <b>${esc((studyById(DB.repW)||{}).name||"")}</b>.
+         Practice and the in-book figures on <b>Your openings</b> only count this one.`
+        :`<b>You have two White repertoires loaded.</b> Pick the one you actually play —
+          practice will stop drilling you on the other, and <b>Your openings</b> will
+          measure your real games against it.`}
+       <div class="row" style="margin-top:10px;gap:6px">
+         ${grp("w").map(s=>`<button class="btn sm sub${DB.repW===s.id?" on":""}"
+            data-rep="${esc(s.id)}">${esc(s.name)}</button>`).join("")}
+         ${DB.repW?`<button class="btn sm" data-rep="">Use both</button>`:""}
+       </div></div>`:""}
+     <div class="studies">${grp("w").map(card).join("")}</div>
      <h2 style="margin-top:26px">As Black</h2><div class="studies">${grp("b").map(card).join("")}</div>`;
   $$("#studyPick .study").forEach(b=>b.onclick=()=>openStudy(b.dataset.s));
+  $$("#studyPick [data-rep]").forEach(b=>b.onclick=()=>{
+    DB.repW=b.dataset.rep||null; save(); renderStudies(); renderPractice(); renderOpReport();
+  });
 }
 function renderPractice(){
   const by=oIndex(), due=opDue(by), total=allPositions().length;
@@ -3155,7 +3270,59 @@ function renderOpenings(){
 }
 
 /* ---------- rendering ---------- */
+/* Time-per-move against what the time actually achieved. Only competitive
+   positions count — once you're five pawns down, a long think is grief, not
+   calculation, and it would drag every bucket toward "slow moves are bad". */
+function renderClock(){
+  const el=$("#clockPanel"); if(!el)return;
+  const rows=[];
+  let timeouts=0, games=0;
+  for(const g of realGames()){
+    if(g.how==="timeout")timeouts++;
+    if(!g.mlog||!g.mlog.length)continue;
+    let used=false;
+    for(const m of g.mlog){
+      if(m.t==null||Math.abs(m.eb)>=300)continue;
+      rows.push(m); used=true;
+    }
+    if(used)games++;
+  }
+  if(rows.length<40){
+    el.innerHTML=`<div class="opnote">Your games carry a clock stamp on every move, but the
+      ones analysed so far don't have it recorded yet. Run <b>Analyse my full history</b> once —
+      it reads the clocks straight from the game record, so nothing gets re-analysed.</div>`;
+    return;
+  }
+  const BUCKETS=[[0,3,"under 3s"],[3,7,"3–7s"],[7,15,"7–15s"],[15,30,"15–30s"],[30,1e9,"over 30s"]];
+  const cells=BUCKETS.map(([lo,hi,lab])=>{
+    const s=rows.filter(m=>m.t>=lo&&m.t<hi);
+    const bl=s.filter(m=>m.wl>=THRESH&&!m.top).length;
+    return {lab,n:s.length,
+      br:s.length?Math.round(100*bl/s.length):0,
+      bm:s.length?Math.round(100*s.filter(m=>m.top).length/s.length):0};
+  }).filter(c=>c.n>=10);
+  const mx=Math.max(...cells.map(c=>c.bm),1);
+  const slow=cells[cells.length-1], fast=cells[0];
+  el.innerHTML=`
+    <div class="bars">${cells.map(c=>`
+      <div class="caprow">
+        <span class="cl">${c.lab}</span>
+        <span class="track"><i style="width:${Math.round(c.bm/mx*100)}%;background:${
+          c.br>=12?"var(--serious)":c.br>=9?"var(--warning)":"var(--good)"}"></i></span>
+        <span class="cv">${c.bm}% best</span>
+        <span class="cm">${c.br}% blunder · ${c.n} moves</span>
+      </div>`).join("")}</div>
+    <p class="note">Across ${rows.length.toLocaleString()} moves in ${games} games where the position
+      was still competitive. ${fast&&slow&&slow.bm<fast.bm
+        ? `Your quick moves find the best move more often than your long ones (${fast.bm}% against ${slow.bm}%) —
+           which is mostly because easy positions get quick moves. The thing worth reading here is that
+           <b>${slow.lab} of thinking still only finds the best move ${slow.bm}% of the time</b>.
+           That time isn't being converted into accuracy.`
+        : `Longer thinks are paying off — keep spending the clock where the position is hard.`}
+      ${timeouts?`<br><br>You have also lost <b>${timeouts} game${timeouts>1?"s":""} on time</b>.`:""}</p>`;
+}
 function renderProgress(){
+  renderClock();
   const A=DB.attempts.filter(a=>!a.skipped);
   const acc=A.length?Math.round(100*A.filter(a=>a.correct).length/A.length):0;
   const med=(xs)=>{if(!xs.length)return 0;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
@@ -3372,7 +3539,8 @@ function gameDetail(g,gi){
             <span class="pill ${(MOTIF[motifOf(m)]||MOTIF.pos).cls}">${(MOTIF[motifOf(m)]||MOTIF.pos).label}</span></div>
           <div class="tprow"><i class="sw3" style="background:${RED}"></i>you played <b>${m.san}</b></div>
           <div class="tprow"><i class="sw3" style="background:${GREEN}"></i>better was <b>${m.bestSan||m.best}</b></div>
-          <div class="tpcost">cost ${(m.cpLoss/100).toFixed(1)} pawns${m.wl>=THRESH?` · ${m.wl}% win probability`:""}</div>
+          <div class="tpcost">cost ${(m.cpLoss/100).toFixed(1)} pawns${m.wl>=THRESH?` · ${m.wl}% win probability`:""}${
+            m.t!=null?` · you spent ${m.t<60?m.t+"s":Math.floor(m.t/60)+"m "+Math.round(m.t%60)+"s"} on it`:""}</div>
           <div class="tptip">${(MOTIF[motifOf(m)]||MOTIF.pos).tip}</div>
           ${d?`<button class="btn sm dl" data-id="${esc(d.id)}" style="margin-top:9px">Drill this</button>`:""}
         </div></div>`;
