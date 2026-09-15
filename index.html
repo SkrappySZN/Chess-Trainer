@@ -3858,12 +3858,15 @@ function scanAnswer(fen,hero,mode){
   // In defend mode we hand the move to the opponent. If he'd be in check the
   // question stops making sense — he'd only be answering the check.
   if(!t||t.in_check())return null;
-  const out=new Set();
+  const out=new Set(); let caps=0;
   for(const m of t.moves({verbose:true})){
     if(!m.captured)continue;
+    caps++;
     if(seeCapture(t,m)>0)out.add(m.to);
   }
-  return out;
+  // No capture on the board at all — the opening position, a locked structure —
+  // means "nothing is loose" is right without looking. That isn't a scan.
+  return caps?out:null;
 }
 function pickScan(mode,wantEmpty){
   const gs=coachGames(); if(!gs.length)return null;
