@@ -616,7 +616,10 @@ ul.bul li{margin:7px 0}
 .seg button{min-height:44px;padding:0 18px;border:0;background:transparent;color:var(--ink);font:800 13.5px var(--display);text-transform:uppercase;cursor:pointer}
 .seg button+button{border-left:2px solid var(--ink)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--plane)}
-.ex-track{position:relative;margin:30px 0 34px;overflow-x:auto;padding:4px 2px 8px}
+/* on Explore the opening's own name is the heading, so the page title steps aside
+   and the board clears the fold */
+#v-open.ex-on>.vhead{display:none}
+.ex-track{position:relative;margin:20px 0 24px;overflow-x:auto;padding:4px 2px 8px}
 .ex-rail{position:relative;display:flex;gap:0;width:max-content}
 .ex-rail::before{content:"";position:absolute;left:10px;right:10px;top:10px;height:4px;background:var(--ink)}
 .ex-stop{position:relative;display:flex;flex-direction:column;align-items:center;gap:9px;background:none;border:0;padding:0 14px;cursor:pointer;color:var(--ink);min-height:44px}
@@ -793,14 +796,17 @@ html.nocur,html.nocur *{cursor:none!important}
 .strikes .x{color:var(--acc)}.strikes .o{color:var(--axis)}
 .pzspark{width:100%;height:90px;display:block;margin-top:var(--sp-3)}
 .pzspark polyline{fill:none;stroke:var(--acc);stroke-width:2.5;vector-effect:non-scaling-stroke}
-/* while solving, the header and mode tabs go, and the board takes the height they used */
-#v-puz.solving .vhead,#v-puz.solving .subnav{display:none}
+/* Focus mode: while a board is in use (a drill, a game, a line, a puzzle) the page
+   heading and its tabs go, and the board takes the height they used. */
+.view.focus{padding-top:0}
+.view.focus>.vhead,.view.focus>.subnav{display:none}
 @media(min-width:561px){
-  #v-puz .play>div:first-child{width:clamp(300px,min(calc(100vh - var(--hdr) - 104px),64vw),940px);
-   width:clamp(300px,min(calc(100svh - var(--hdr) - 104px),64vw),940px)}
+  :is(#v-train,#v-play,#v-open,#v-puz).focus .play>div:first-child{
+   width:clamp(300px,min(calc(100vh - var(--hdr) - 118px),64vw),940px);
+   width:clamp(300px,min(calc(100svh - var(--hdr) - 118px),64vw),940px)}
 }
 @media(min-width:561px) and (max-width:1000px){
-  #v-puz .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 104px)),940px)}
+  :is(#v-train,#v-play,#v-open,#v-puz).focus .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 118px)),940px)}
 }
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
 .tabbar{display:none}
@@ -1146,7 +1152,7 @@ html.nocur,html.nocur *{cursor:none!important}
 </div>
 
 <!-- ================= OPENINGS ================= -->
-<div class="view" id="v-open">
+<div class="view ex-on" id="v-open">
   <header class="vhead sm"><div><div class="eyebrow">Your repertoire, against your real games</div><h1>Openings<i>.</i></h1></div></header>
   <div class="subnav" id="opNav">
     <button class="btn sm sub on" data-o="explore">Explore</button>
@@ -2678,8 +2684,8 @@ function startDrill(){
       Clear the focus above to go back to everything.`;
     if(GFOCUS)$("#noDrills").innerHTML=`That game has no positions worth drilling — nothing you played cost enough to learn from.
       Clear the focus above to go back to everything.`;
-    $("#noDrills").style.display="block";$("#drillUI").style.display="none";return}
-  $("#noDrills").style.display="none"; $("#drillUI").style.display="block";
+    $("#noDrills").style.display="block";$("#drillUI").style.display="none";boardFocus("train",false);return}
+  $("#noDrills").style.display="none"; $("#drillUI").style.display="block"; boardFocus("train",true);
   const m=MOTIF[motifOf(cur)]||MOTIF.pos;
   $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
   $("#prompt").textContent="Find the move you missed";
@@ -3093,7 +3099,7 @@ function startGame(lvId,colChoice,preId){
   G={id:++GID,ch,hero,lv,pre,times:[],t0:Date.now(),startedAt:Date.now(),over:false,startFen:ch.fen(),lastMove:null,profile:(lv.capsule?lv.capsule.losses:myLossProfile())}; clearUser("gBoard");
   REV=null; gSel=null;
   $("#lastMv").innerHTML="";
-  $("#setup").style.display="none"; $("#gameUI").style.display="block"; $("#gReview").innerHTML="";
+  $("#setup").style.display="none"; $("#gameUI").style.display="block"; boardFocus("play",true); $("#gReview").innerHTML="";
   $("#gTitle").textContent=`${pre.name} · ${lv.name}`;
   $("#gStatus").textContent = ch.turn()===hero ? "your move" : "their move…";
   $("#gTimer").textContent="0s"; $("#gTimer").className="timer";
@@ -3211,7 +3217,7 @@ $("#takeback").onclick=()=>{ if(!G||G.over)return;
   G.ch.undo(); G.ch.undo(); gSel=null; G.lastMove=null;
   $("#lastMv").innerHTML=`<span class="q">took back — your move</span>`; drawGame(); };
 $("#newGame").onclick=()=>{ if(G)G.over=true; clearInterval(G&&G.tick);
-  $("#gameUI").style.display="none"; $("#setup").style.display="block"; };
+  $("#gameUI").style.display="none"; $("#setup").style.display="block"; boardFocus("play",false); };
 
 async function reviewGame(){
   const g0=G, id=G.id, hero=G.hero;
@@ -3603,12 +3609,12 @@ let OP=null;   // {st, g, node, awaiting}
 function openStudy(id){
   const st=studyById(id); if(!st)return;
   OP={st, g:new Chess(), node:studyTree(st).root, picked:null, showed:false};
-  $("#studyPick").style.display="none"; $("#studyRun").style.display="block";
+  $("#studyPick").style.display="none"; $("#studyRun").style.display="block"; boardFocus("open",true);
   $("#opName").textContent=st.name;
   clearUser("opBoard");
   opStep();
 }
-function opExit(){ OP=null; $("#studyRun").style.display="none"; $("#studyPick").style.display="block"; renderStudies(); }
+function opExit(){ OP=null; boardFocus("open",false); $("#studyRun").style.display="none"; $("#studyPick").style.display="block"; renderStudies(); }
 function opDraw(marks={},arrows=null){
   renderBoard($("#opBoard"),OP.g.fen(),OP.st.color==="b",marks,arrows);
   const h=OP.g.history(); let s="";
@@ -3700,7 +3706,7 @@ function pracPick(){
 function pracStart(){
   const p=pracPick(); if(!p)return;
   PR={p, g:new Chess(p.fen), answered:false, t0:Date.now()};
-  $("#pracIdle").style.display="none"; $("#pracRun").style.display="block";
+  $("#pracIdle").style.display="none"; $("#pracRun").style.display="block"; boardFocus("open",true);
   $("#prName").textContent=p.studyName;
   $("#prTurn").innerHTML=`<span class="dot2" style="background:${p.color==="w"?'#fbfbf8':'#17171a'}"></span>You're ${p.color==="w"?"White":"Black"}`;
   $("#prPrompt").textContent="Play your repertoire move";
@@ -4443,7 +4449,7 @@ function wireDrillLinks(){
     cur=d; answered=false; sel=null; started=false; viewResult=false; lastTry=null; LINE=null;
     clearUser("board"); renderFocus();
     go("train",{top:true});
-    $("#noDrills").style.display="none"; $("#drillUI").style.display="block";
+    $("#noDrills").style.display="none"; $("#drillUI").style.display="block"; boardFocus("train",true);
     const m=MOTIF[motifOf(d)]||MOTIF.pos;
     $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
     $("#ctx").innerHTML=`From your game vs <b>${esc(d.vs)}</b>, move ${esc(d.movenum)}. You played <b>${esc(d.played)}</b> here — it'll be marked in red.`+drillNote(d);
@@ -5258,7 +5264,7 @@ function pzStart(p){
       mode:RU?"rush":PZMODE};
   pzSel=null; clearUser("pzBoard");
   $("#pzIdle").style.display="none"; $("#pzRun").style.display="block";
-  if(!$("#v-puz").classList.contains("solving")){ $("#v-puz").classList.add("solving"); toTop(); }
+  boardFocus("puz",true);
   $("#pzTag").textContent=RU?"Rush · "+RUSHES[RU.kind].label:PZ.mode==="rated"?"Rated":(PZTHEMES[PZTHEME]||"Theme");
   $("#pzTurn").innerHTML=`<span class="dot2" style="background:${hero==="w"?'#fbfbf8':'#17171a'}"></span>You're ${hero==="w"?"White":"Black"}`;
   $("#pzPrompt").textContent=`${hero==="w"?"White":"Black"} to move`;
@@ -5375,7 +5381,7 @@ function pzNext(){
 }
 function pzQuit(){
   if(RU)return rushEnd();
-  PZ=null; $("#v-puz").classList.remove("solving");
+  PZ=null; boardFocus("puz",false);
   $("#pzRun").style.display="none"; $("#pzIdle").style.display="block"; renderPuz();
 }
 
@@ -5414,7 +5420,7 @@ function rushEnd(){
   if(RU.score>prev)S.best[RU.kind]=RU.score;
   save();
   RUSHDONE={kind:RU.kind,score:RU.score,prev,res:RU.res};
-  RU=null; PZ=null; $("#pzClock").textContent=""; $("#v-puz").classList.remove("solving");
+  RU=null; PZ=null; $("#pzClock").textContent=""; boardFocus("puz",false);
   $("#pzRun").style.display="none"; $("#pzIdle").style.display="block";
   renderPuz();
 }
@@ -5522,6 +5528,13 @@ wireBoardInput($("#pzBoard"),{
    every "Drill this" button agree about where you are. The view itself flips
    under a sheet of colour, which is the one place the app spends motion on
    purpose: it says "somewhere else now" in the time a fade would take anyway. */
+// Turn focus mode on or off for a view; jumps to the top when it switches on
+// for the view on screen, so the board starts fully in sight.
+function boardFocus(v,on){
+  const el=document.getElementById("v-"+v); if(!el||el.classList.contains("focus")===!!on)return;
+  el.classList.toggle("focus",!!on);
+  if(on&&el.classList.contains("on"))try{ toTop() }catch(e){}
+}
 const NAVOF={coach:"coach",train:"train",puz:"puz",play:"play",open:"open",weak:"insights",prog:"insights",games:"games"};
 const VIEWNAME={coach:"Today",train:"Train",puz:"Puzzles",play:"Play",open:"Openings",weak:"Insights",prog:"Insights",games:"Games"};
 let VIEW="coach", WIPE=0;
@@ -5785,6 +5798,7 @@ let opSel=null, prSel=null;
 function openSub(name){
   $$("#opNav .sub").forEach(x=>x.classList.toggle("on",x.dataset.o===name));
   $$(".osec").forEach(s=>s.classList.toggle("on",s.id==="o-"+name));
+  $("#v-open").classList.toggle("ex-on",name==="explore");
   if(name==="explore")renderExplorer();
 }
 $$("#opNav .sub").forEach(b=>b.onclick=()=>openSub(b.dataset.o));
@@ -5844,7 +5858,7 @@ wireBoardInput($("#opBoard"),{
   cancel:()=>{ opSel=null; opDraw() },
   redraw:()=>{ if(OP)opDraw() }
 });
-$("#prExit").onclick=()=>{ PR=null; $("#pracRun").style.display="none"; $("#pracIdle").style.display="block"; renderPractice(); };
+$("#prExit").onclick=()=>{ PR=null; boardFocus("open",false); $("#pracRun").style.display="none"; $("#pracIdle").style.display="block"; renderPractice(); };
 $("#prNext").onclick=()=>{ const n=pracPick(); if(n)pracStart(); else $("#prExit").click(); };
 $("#prShow").onclick=()=>{ if(PR&&!PR.answered)prAnswer(null,null,true) };
 wireBoardInput($("#prBoard"),{
