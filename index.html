@@ -483,8 +483,8 @@ ul.bul li{margin:7px 0}
 .tw-cap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px;font:12.5px var(--mono);color:var(--muted)}
 @media(max-width:700px){.sticker{width:90px;height:90px;right:-4px}.sticker b{font-size:34px}.tw-ghost{display:none}}
 /* the scrolling stats strip */
-.ticker{background:var(--ink);color:var(--plane);overflow:hidden;margin:0 -24px 44px;border-top:3px solid var(--ink);border-bottom:3px solid var(--ink)}
-@media(max-width:940px){.ticker{margin:0 -16px 36px}}
+.ticker{background:var(--ink);color:var(--plane);overflow:hidden;margin:0 calc(50% - 50vw) 44px;border-top:3px solid var(--ink);border-bottom:3px solid var(--ink)}
+@media(max-width:940px){.ticker{margin-bottom:36px}}
 .ticker-in{display:flex;width:max-content;padding:13px 0;font:600 14.5px var(--mono);text-transform:uppercase;white-space:nowrap;animation:marq 48s linear infinite}
 .ticker-in span{padding-right:48px}
 .ticker-in i{font-style:normal;color:var(--acc-hi)}
@@ -703,12 +703,93 @@ ul.bul li{margin:7px 0}
   .tile{border-right:0;border-bottom:2px solid var(--ink);margin-right:0}
   .tile:last-child{border-bottom:0}
 }
+
+/* ===== motion layer =====================================================
+   Only switched on (html.motion) once GSAP has loaded and the viewer hasn't
+   asked for reduced motion. Nothing below hides content on its own: every
+   start state is set by script at the moment it animates, so if the script
+   never runs the page simply sits still and complete. */
+.loader{position:fixed;inset:0;z-index:100;background:var(--ink);color:var(--plane);display:flex;flex-direction:column;
+ justify-content:space-between;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px))}
+.ld-word{font:900 clamp(56px,12vw,170px)/.86 var(--display);letter-spacing:-.055em;text-transform:uppercase}
+.ld-word i{font-style:normal;color:var(--acc-hi)}
+.ld-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.ld-count{font:600 clamp(64px,14vw,190px)/.8 var(--mono);font-variant-numeric:tabular-nums}
+.ld-note{font:13px var(--mono);color:#A8A49B;max-width:28ch}
+.ld-bar{position:absolute;left:0;bottom:0;height:6px;background:var(--acc);width:0}
+@media(prefers-reduced-motion:reduce){.loader{display:none}}
+/* a ring that trails the pointer and swells over anything pressable */
+.cur{position:fixed;left:0;top:0;z-index:9998;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+ border:2px solid var(--acc);pointer-events:none;transition:width .25s var(--ease),height .25s var(--ease),margin .25s var(--ease),background .25s,opacity .2s;opacity:0}
+.cur.on{opacity:1}
+.cur.big{width:54px;height:54px;margin:-27px 0 0 -27px;background:rgba(194,65,12,.12)}
+.cur.dot{width:8px;height:8px;margin:-4px 0 0 -4px;background:var(--acc);border-color:var(--acc)}
+.cur.down{transform-origin:center}
+/* highlighter and bars wait for the scroll position instead of playing off-screen */
+.motion .gmeter i,.motion .leak .lbar i,.motion .cond .track i,.motion .barrow .track i,.motion .caprow .track i,
+.motion .mini-prog i,.motion .tw-bar i,.motion .ex-line .bar i{animation:none}
+.motion .hl{animation:none}
+.ghead{transition:background var(--d1),padding var(--d3) var(--ease)}
+.ghead:hover{padding-left:18px}
+/* the x-ray on Today's board */
+.xwrap{position:relative;cursor:crosshair;touch-action:pan-y}
+.xray{position:absolute;inset:0;z-index:5;pointer-events:none;clip-path:circle(var(--r,0px) at var(--x,50%) var(--y,50%))}
+.xray .board{box-shadow:none!important;border-color:var(--ink)}
+.board.xr .sq.l{background:#262626}.board.xr .sq.d{background:#1A1A1A}
+.board.xr .coord{color:#77736B!important}
+.board.xr .pc.w{fill:#F6F5F1;stroke:#F6F5F1}
+.board.xr .pc.b{fill:none;stroke:#F6F5F1;stroke-width:1.6}
+.board.xr .pc{filter:none}
+.sq.h1::after,.sq.h2::after,.sq.h3::after{content:"";position:absolute;inset:0;z-index:1;background:var(--acc-hi)}
+.sq.h1::after{opacity:.22}.sq.h2::after{opacity:.42}.sq.h3::after{opacity:.62}
+.sq.hang{box-shadow:inset 0 0 0 max(3px,.8cqw) #F28A55}
+.xring{position:absolute;z-index:6;left:var(--x,50%);top:var(--y,50%);width:calc(var(--r,0px) * 2);height:calc(var(--r,0px) * 2);
+ transform:translate(-50%,-50%);border-radius:50%;border:2px solid var(--acc-hi);pointer-events:none}
+.xbtn2{background:none;border:0;padding:0;font:600 12.5px var(--mono);color:var(--acc);cursor:pointer;text-decoration:underline;text-underline-offset:3px;min-height:32px}
+/* two rows of type that slide against each other as you scroll past */
+.band{margin:10px calc(50% - 50vw) 46px;overflow:hidden;pointer-events:none;user-select:none}
+@media(max-width:940px){.band{margin-top:6px;margin-bottom:36px}}
+.band-row{white-space:nowrap;will-change:transform;line-height:1}
+.band-row.a{font:400 italic clamp(56px,10vw,150px)/1 var(--serif);color:var(--acc);letter-spacing:-.02em}
+.band-row.b{font:900 clamp(48px,8.6vw,130px)/1 var(--display);letter-spacing:-.05em;text-transform:uppercase;color:var(--ink);margin-top:-.05em}
+.band-row.b span{-webkit-text-stroke:2px var(--ink);color:transparent}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;
     transition-duration:1ms!important;scroll-behavior:auto!important}
 }
 </style></head>
 <body>
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="ld-word">Chess<br>Trainer<i>.</i></div>
+  <div class="ld-row"><span class="ld-note" id="ldNote">Setting up the pieces and waking the engine</span><span class="ld-count" id="ldCount">000</span></div>
+  <i class="ld-bar" id="ldBar"></i>
+</div>
+<script>
+/* The engine takes a few seconds to load whatever the page does, so the wait
+   becomes the intro: the counter tracks it and the curtain lifts once it's up.
+   It never holds the page past 9 seconds. */
+(function(){
+  var el=document.getElementById("loader");
+  if(!el)return;
+  if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches){el.remove();return}
+  var c=document.getElementById("ldCount"),bar=document.getElementById("ldBar"),v=0,t0=Date.now();
+  var L=window.__ld={done:false,finish:null};
+  setTimeout(function(){L.done=true},9000);
+  (function tick(){
+    if(!el.isConnected)return;
+    var target=L.done?100:Math.min(90,(Date.now()-t0)/28);
+    v+=(target-v)*(L.done?.2:.08); if(L.done&&v>99.3)v=100;
+    c.textContent=String(Math.round(v)).padStart(3,"0"); bar.style.width=v+"%";
+    if(v>=100){
+      var end=function(){el.remove();window.dispatchEvent(new Event("loaderdone"))};
+      if(el.animate)el.animate([{transform:"translateY(0)"},{transform:"translateY(-101%)"}],{duration:900,easing:"cubic-bezier(.76,0,.24,1)",fill:"forwards"}).onfinish=end;
+      else end();
+      return;
+    }
+    requestAnimationFrame(tick);
+  })();
+})();
+</script>
 <a class="skip" href="#main">Skip to content</a>
 <header class="hdr">
   <button class="mark" data-go="coach" aria-label="Chess Trainer, today">Chess Trainer<i>.</i></button>
@@ -728,7 +809,7 @@ ul.bul li{margin:7px 0}
 </header>
 <div class="statusbar"><div class="warnbox" id="storeWarn" style="display:none"></div></div>
 
-<div class="menu" id="menu" aria-hidden="true">
+<div class="menu" id="menu" aria-hidden="true" data-lenis-prevent>
   <nav aria-label="Main menu">
     <button data-nav="coach" data-go="coach" style="--i:0"><span class="big">Today</span><span class="small">The session, the streak, the coach</span></button>
     <button data-nav="train" data-go="train" style="--i:1"><span class="big">Train</span><span class="small">Positions you missed</span></button>
@@ -740,7 +821,7 @@ ul.bul li{margin:7px 0}
 </div>
 
 <div class="scrim" id="scrim"></div>
-<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Account and data">
+<aside class="drawer" id="drawer" data-lenis-prevent aria-hidden="true" aria-label="Account and data">
   <div class="drawer-in">
     <div class="dh"><h2>Account</h2><button class="xbtn" id="drawerX" aria-label="Close account panel">×</button></div>
     <div class="who" id="who">loading…</div>
@@ -885,7 +966,7 @@ ul.bul li{margin:7px 0}
         <h3 id="gTitle" style="font-size:28px;letter-spacing:-.025em">Game in progress</h3>
         <p class="lastmv" id="lastMv"></p>
         <p id="gSub" style="font-size:15px"></p>
-        <div class="mono" id="moveList" style="max-height:220px;overflow:auto;line-height:1.9"></div>
+        <div class="mono" id="moveList" data-lenis-prevent style="max-height:220px;overflow:auto;line-height:1.9"></div>
         <div id="gReview"></div>
       </div>
     </div>
@@ -957,7 +1038,7 @@ ul.bul li{margin:7px 0}
         <button type="button" data-side="b" aria-pressed="false">As Black</button>
       </div>
     </div>
-    <div class="ex-track" id="exTrack"></div>
+    <div class="ex-track" id="exTrack" data-lenis-prevent></div>
     <div class="ex-grid">
       <div class="ex-lines" id="exLines"></div>
       <div class="ex-board">
@@ -997,7 +1078,7 @@ ul.bul li{margin:7px 0}
             <button class="btn" id="opBack">‹ Back</button>
             <button class="btn" id="opRestart">Restart line</button>
           </div>
-          <div class="mono" id="opMoves" style="max-height:150px;overflow:auto;line-height:1.9"></div>
+          <div class="mono" id="opMoves" data-lenis-prevent style="max-height:150px;overflow:auto;line-height:1.9"></div>
         </div>
       </div>
     </div>
@@ -1039,11 +1120,15 @@ ul.bul li{margin:7px 0}
   <div>
     <div id="gameList"><div class="empty">Nothing analysed yet.</div></div>
     <div class="prog" id="pwrap" style="display:none"><i id="pbar" style="width:0%"></i></div>
-    <div class="log" id="log"></div>
+    <div class="log" id="log" data-lenis-prevent></div>
   </div>
 </div>
 
 </main>
+<!-- Motion libraries. The app works without them; they only add the scroll effects. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 <script type="module">
 const $=(s)=>document.querySelector(s), $$=(s)=>[...document.querySelectorAll(s)];
 const FILES="abcdefgh";
@@ -2953,7 +3038,7 @@ function buildReview(mlog,med,hero,url){
         <button class="btn sm sw" data-side="best" style="flex:1">Better move</button>
       </div>
       <div id="revText" class="revtext"></div>
-      <div class="revlist" id="revList"></div>`
+      <div class="revlist" id="revList" data-lenis-prevent></div>`
       : `<div class="fb ok"><div class="hd">Nothing worth flagging</div>No move cost you more than a pawn. Clean game.</div>`}
     </div>`;
   const pz=$("#revPuz"); if(pz)pz.onclick=()=>focusGame(url);
@@ -3672,8 +3757,8 @@ function renderExplorer(){
       <button class="btn" id="exPrac">Practise your repertoire</button>
     </div>`;
   $$("#exNext [data-san]").forEach(b=>b.onclick=()=>exGo(path.concat(b.dataset.san)));
-  const lb=$("#exLearn"); if(lb)lb.onclick=()=>{ openSub("learn"); openStudy(reps[0].st.id); window.scrollTo(0,0); };
-  $("#exPrac").onclick=()=>{ openSub("practice"); pracStart(); window.scrollTo(0,0); };
+  const lb=$("#exLearn"); if(lb)lb.onclick=()=>{ openSub("learn"); openStudy(reps[0].st.id); toTop(); };
+  $("#exPrac").onclick=()=>{ openSub("practice"); pracStart(); toTop(); };
 
   exDraw(list,hasRep,mine);
 }
@@ -4007,7 +4092,7 @@ function gameDetail(g,gi){
       <div class="rv-card" id="rc${gi}"></div>
       <div>
         <h2 style="margin-bottom:10px">Your moves</h2>
-        <div class="rv-sheet" id="rs${gi}">${M.map((m,i)=>`<button class="rv-mv ${moveTag(m)}" data-mi="${i}" aria-label="move ${m.n} ${esc(m.san)}, ${TAGNAME[moveTag(m)]}"><span><span class="n">${m.n}.</span> ${esc(m.san)}</span><i></i></button>`).join("")}</div>
+        <div class="rv-sheet" id="rs${gi}" data-lenis-prevent>${M.map((m,i)=>`<button class="rv-mv ${moveTag(m)}" data-mi="${i}" aria-label="move ${m.n} ${esc(m.san)}, ${TAGNAME[moveTag(m)]}"><span><span class="n">${m.n}.</span> ${esc(m.san)}</span><i></i></button>`).join("")}</div>
       </div>
     </div>
   </div>
@@ -4397,9 +4482,13 @@ function renderToday(gs){
     </div>
     <div class="tw-side">
       <div class="sticker" aria-label="Streak: ${st} days"><small>Streak</small><b>${st}</b><small>day${st===1?"":"s"}</small></div>
-      <div class="board still" id="twBoard" role="img" aria-label="${d?"The next position you will drill":"The starting position"}"></div>
-      <div class="tw-cap"><span>${d?`Up next · vs ${esc(d.vs)}, move ${esc(d.movenum)}`:"Your positions appear here"}</span>
-        <span>${d?`you're ${d.hero==="w"?"White":"Black"}`:""}</span></div>
+      <div class="xwrap" id="twX">
+        <div class="board still" id="twBoard" role="img" aria-label="${d?"The next position you will drill":"The starting position"}"></div>
+        ${d?`<div class="xray" aria-hidden="true"><div class="board still xr" id="twXr"></div></div><div class="xring" aria-hidden="true"></div>`:""}
+      </div>
+      <div class="tw-cap"><span>${d?`Up next · vs ${esc(d.vs)}, move ${esc(d.movenum)} · you're ${d.hero==="w"?"White":"Black"}`:"Your positions appear here"}</span>
+        ${d?`<button class="xbtn2" id="twXBtn" aria-pressed="false">Show the whole x-ray</button>`:""}</div>
+      ${d?`<p class="note" style="margin:0">Hover the board to x-ray it: every square he attacks, and a ring on anything of yours he can win.</p>`:""}
     </div>
   </section>`;
 }
@@ -4462,6 +4551,11 @@ function renderCoach(){
     <div class="row">${buttons}</div>
   </div>
 
+  <div class="band" aria-hidden="true">
+    <div class="band-row a">${"Board scan · your misses · your repertoire · your games · ".repeat(3)}</div>
+    <div class="band-row b">${(esc(st.title)+". <span>"+esc(st.title)+".</span> ").repeat(3)}</div>
+  </div>
+
   <div class="card warmup" style="margin-bottom:var(--sp-5)">
     <div style="min-width:0;flex:1 1 300px">
       <h3>Two-minute warm-up</h3>
@@ -4516,6 +4610,7 @@ function renderCoach(){
 function wireToday(){
   const d=pickDrill(), b=$("#twBoard");
   if(b)renderBoard(b,d?d.fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",d?d.hero==="b":false,{},null);
+  if(d)xrayWire(d.fen,d.hero);
   const ta=$("#twAcct"); if(ta)ta.onclick=()=>setDrawer(true);
   $$("#coachBody [data-go]").forEach(b=>b.onclick=()=>{
     const [kind,val]=b.dataset.go.split(":");
@@ -4737,7 +4832,7 @@ function drawWeak(el,gl){
   // headline
   let html=`<div class="wkhero">
     <div class="eyebrow">Your biggest leak</div>
-    <h3>${esc(T.label)}</h3>
+    <h3>${(()=>{ const w=esc(T.label).split(" "); return w.length>2?w.slice(0,-2).join(" ")+` <span class="hl">${w.slice(-2).join(" ")}</span>`:`<span class="hl">${w.join(" ")}</span>`; })()}</h3>
     <p>${T.d}</p>
     <p style="margin-top:10px;color:var(--muted);font-size:13.5px">
       <b style="color:var(--ink)">${by[top].n} times</b> across ${games} analysed game${games===1?"":"s"} —
@@ -4869,19 +4964,20 @@ function showView(v){
   if(v==="weak")renderWeak();
   if(v==="coach")renderCoach();
   if(v==="open")renderExplorer();
-  enterCounts($("#v-"+v));
+  M.entered=Date.now();
+  if(M.on){ motionScan(true); } else enterCounts($("#v-"+v));
 }
 function go(v,opts={}){
   if(!document.getElementById("v-"+v))return;
   setMenu(false); setDrawer(false);
   const same=v===VIEW;
   if(same||opts.instant||!motionOK()||!document.querySelector(".wipe").animate){
-    showView(v); if(!same||opts.top)window.scrollTo(0,0); return; }
+    showView(v); if(!same||opts.top)toTop(); return; }
   const id=++WIPE, w=$(".wipe"); w.style.visibility="visible";
   $("#wipeWord").textContent=VIEWNAME[v]||"";
   const ease="cubic-bezier(.76,0,.24,1)";
   const a=w.animate([{transform:"translateY(101%)"},{transform:"translateY(0)"}],{duration:340,easing:ease,fill:"forwards"});
-  a.onfinish=()=>{ if(id!==WIPE)return; showView(v); window.scrollTo(0,0);
+  a.onfinish=()=>{ if(id!==WIPE)return; showView(v); toTop();
     w.animate([{transform:"translateY(0)"},{transform:"translateY(-101%)"}],{duration:440,delay:70,easing:ease,fill:"forwards"})
       .onfinish=()=>{ if(id===WIPE)w.style.visibility="hidden"; }; };
 }
@@ -4901,6 +4997,7 @@ let MENU=false, DRAWER=false;
 function setMenu(open){
   if(open===MENU)return; MENU=open;
   document.documentElement.classList.toggle("menu-open",open);
+  if(M.lenis){ open?M.lenis.stop():M.lenis.start(); }
   $("#menuBtn").setAttribute("aria-expanded",String(open));
   $("#menuBtn").setAttribute("aria-label",open?"Close menu":"Open menu");
   $("#menu").setAttribute("aria-hidden",String(!open));
@@ -4909,6 +5006,7 @@ function setMenu(open){
 function setDrawer(open){
   if(open===DRAWER)return; DRAWER=open;
   document.documentElement.classList.toggle("drawer-open",open);
+  if(M.lenis){ open?M.lenis.stop():M.lenis.start(); }
   $("#acctBtn").setAttribute("aria-expanded",String(open));
   $("#drawer").setAttribute("aria-hidden",String(!open));
   if(open)setTimeout(()=>$("#user").focus(),200); else if(document.activeElement&&$("#drawer").contains(document.activeElement))$("#acctBtn").focus();
@@ -4923,6 +5021,129 @@ document.addEventListener("keydown",e=>{
   if(MENU){ setMenu(false); $("#menuBtn").focus(); }
   else if(DRAWER)setDrawer(false);
 });
+
+
+/* ---------- motion ----------------------------------------------------------
+   The scroll layer, borrowed from the showcase prototype and fitted to an app:
+   smooth scrolling, things rising into place as they come into view, bars and
+   highlighter strokes that wait until you can see them, type that slides as you
+   scroll, a pointer ring, and the x-ray on Today's board. All of it is skipped
+   for reduced motion or if the libraries didn't load. */
+const M={on:false,lenis:null,entered:0,obs:null,refreshT:0};
+function toTop(){ if(M.lenis)M.lenis.scrollTo(0,{immediate:true,force:true}); else window.scrollTo(0,0); }
+function motionInit(){
+  if(M.on||!motionOK()||!window.gsap||!window.ScrollTrigger)return;
+  gsap.registerPlugin(ScrollTrigger);
+  M.on=true; document.documentElement.classList.add("motion");
+  if(window.Lenis){
+    try{
+      M.lenis=new Lenis({lerp:.1,smoothWheel:true,wheelMultiplier:1});
+      M.lenis.on("scroll",ScrollTrigger.update);
+      gsap.ticker.add(t=>M.lenis&&M.lenis.raf(t*1000));
+      gsap.ticker.lagSmoothing(0);
+    }catch(e){ M.lenis=null; }
+  }
+  cursorInit();
+  // every render lands new markup somewhere in a view; pick it up as it arrives
+  let t=0;
+  M.obs=new MutationObserver(()=>{ clearTimeout(t); t=setTimeout(()=>motionScan(false),30); });
+  M.obs.observe($("#main"),{childList:true,subtree:true});
+  window.addEventListener("resize",()=>ScrollTrigger.refresh());
+}
+const REVEAL=".card,.gcard,.leak,.study,.stage,.ex-line,.ex-panel,.grow,.tiles,.focus,.wkhero,.tw-list li,.rv-card,.eg,.plaque,.warmup,.rv-moment,.goal+.note,.opnote";
+const BARS=".gmeter i,.leak .lbar i,.cond .track i,.barrow .track i,.caprow .track i,.mini-prog i,.tw-bar i,.ex-line .bar i";
+function motionScan(entering){
+  if(!M.on)return;
+  const view=$(".view.on"); if(!view)return;
+  const fresh=entering||Date.now()-M.entered<1400, vh=innerHeight;
+  ScrollTrigger.getAll().forEach(t=>{ if(t.trigger&&!t.trigger.isConnected)t.kill(); });
+  const where=(e)=>{ const r=e.getBoundingClientRect(); return r.bottom<0?"above":r.top>vh*.94?"below":"in"; };
+  const take=(sel)=>[...view.querySelectorAll(sel)].filter(e=>!e.__mo&&e.offsetParent!==null&&(e.__mo=1));
+  // blocks rise in
+  const blocks=take(REVEAL), now=[], later=[];
+  blocks.forEach(e=>{ const w=where(e); if(w==="below")later.push(e); else if(w==="in"&&fresh)now.push(e); });
+  if(now.length)gsap.from(now,{y:34,opacity:0,duration:.8,ease:"expo.out",stagger:.045,delay:entering?.12:0,clearProps:"transform,opacity"});
+  if(later.length){
+    gsap.set(later,{y:56,opacity:0});
+    ScrollTrigger.batch(later,{start:"top 94%",once:true,
+      onEnter:b=>gsap.to(b,{y:0,opacity:1,duration:.95,ease:"expo.out",stagger:.07,overwrite:true,clearProps:"transform,opacity"})});
+  }
+  // bars fill to their value once they're on screen
+  take(BARS).forEach(e=>{ const w=where(e);
+    if(w==="below")gsap.from(e,{scaleX:0,transformOrigin:"left center",duration:1.1,ease:"expo.out",scrollTrigger:{trigger:e,start:"top 94%",once:true}});
+    else if(w==="in"&&fresh)gsap.from(e,{scaleX:0,transformOrigin:"left center",duration:1.1,ease:"expo.out",delay:.25}); });
+  // the highlighter stroke under a headline
+  take(".hl").forEach(e=>{ const w=where(e);
+    if(w==="above"||(w==="in"&&!fresh))return;
+    gsap.fromTo(e,{backgroundSize:"0% .16em"},{backgroundSize:"100% .16em",duration:1.1,ease:"expo.inOut",delay:w==="in"?.35:0,
+      scrollTrigger:w==="below"?{trigger:e,start:"top 88%",once:true}:undefined}); });
+  // numbers run up when they come into view
+  take("[data-count]").forEach(e=>{ const w=where(e);
+    if(w==="below")ScrollTrigger.create({trigger:e,start:"top 92%",once:true,onEnter:()=>countUp(e)});
+    else if(w==="in"&&fresh)countUp(e); });
+  // the sliding type rows
+  take(".band").forEach(b=>{
+    const a=b.querySelector(".band-row.a"), c=b.querySelector(".band-row.b");
+    gsap.fromTo(a,{xPercent:0},{xPercent:-28,ease:"none",scrollTrigger:{trigger:b,start:"top bottom",end:"bottom top",scrub:.6}});
+    gsap.fromTo(c,{xPercent:-28},{xPercent:0,ease:"none",scrollTrigger:{trigger:b,start:"top bottom",end:"bottom top",scrub:.6}});
+  });
+  // Today's board: pieces drop onto the squares on arrival
+  if(fresh){ const pcs=view.querySelectorAll("#twBoard .pc");
+    if(pcs.length&&!pcs[0].__mo){ pcs.forEach(p=>p.__mo=1);
+      gsap.from(pcs,{y:-46,opacity:0,duration:.7,ease:"back.out(1.8)",stagger:{each:.018,from:"random"},delay:.2,clearProps:"transform,opacity"}); } }
+  clearTimeout(M.refreshT); M.refreshT=setTimeout(()=>ScrollTrigger.refresh(),120);
+}
+function countUp(el){
+  const end=parseFloat(el.dataset.count); if(!isFinite(end)||end===0)return;
+  const dec=+(el.dataset.dec||0), suf=el.dataset.suf||"", o={v:0};
+  gsap.to(o,{v:end,duration:1.2,ease:"expo.out",onUpdate:()=>{ el.textContent=(dec?o.v.toFixed(dec):Math.round(o.v).toLocaleString())+suf; }});
+}
+function cursorInit(){
+  if(!window.matchMedia||!matchMedia("(hover: hover) and (pointer: fine)").matches)return;
+  const c=document.createElement("div"); c.className="cur"; c.setAttribute("aria-hidden","true"); document.body.appendChild(c);
+  let x=-100,y=-100,tx=x,ty=y;
+  addEventListener("pointermove",e=>{ tx=e.clientX; ty=e.clientY; c.classList.toggle("on",e.pointerType==="mouse"); },{passive:true});
+  document.addEventListener("pointerleave",()=>c.classList.remove("on"));
+  gsap.ticker.add(()=>{ x+=(tx-x)*.24; y+=(ty-y)*.24; c.style.transform=`translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; });
+  document.addEventListener("pointerover",e=>{
+    const t=e.target.closest&&e.target.closest("button,a,[role=button],input,.ghead");
+    const onBoard=!!(e.target.closest&&e.target.closest(".board,.xwrap"));
+    c.classList.toggle("dot",onBoard); c.classList.toggle("big",!!t&&!onBoard);
+  });
+}
+// What he's hitting: every square his pieces attack, darker the more of them,
+// and a ring on anything of yours he can actually win. It's check #2 of the
+// three, drawn for you.
+function heatOf(fen,hero){
+  const out={};
+  try{
+    const g=new Chess(fen), P=posOf(g), foe=hero==="w"?8:0, A=[];
+    for(let sq=0;sq<120;sq++){
+      if(sq&0x88){ sq+=7; continue; }
+      attTo(P.b,foe,sq,A);
+      if(A.length)out[ALGX[sq]]="h"+Math.min(3,A.length);
+    }
+    const t=new Chess(setTurn(fen,hero==="w"?"b":"w"));
+    if(!t.in_check())t.moves({verbose:true}).forEach(m=>{ if(m.captured&&seeCapture(t,m)>0)out[m.to]=(out[m.to]||"")+" hang"; });
+  }catch(e){}
+  return out;
+}
+function xrayWire(fen,hero){
+  const w=$("#twX"), xr=$("#twXr"); if(!w||!xr)return;
+  renderBoard(xr,fen,hero==="b",heatOf(fen,hero),null);
+  let pinned=false;
+  const setR=(r)=>{ if(window.gsap&&M.on)gsap.to(w,{"--r":r,duration:.5,ease:"expo.out"}); else w.style.setProperty("--r",r); };
+  w.style.setProperty("--r","0px");
+  const at=(e)=>{ const b=w.getBoundingClientRect(); w.style.setProperty("--x",(e.clientX-b.left)+"px"); w.style.setProperty("--y",(e.clientY-b.top)+"px"); };
+  w.addEventListener("pointermove",e=>{ if(!pinned)at(e); });
+  w.addEventListener("pointerenter",e=>{ if(!pinned&&e.pointerType==="mouse")setR("110px"); });
+  w.addEventListener("pointerleave",e=>{ if(!pinned&&e.pointerType==="mouse")setR("0px"); });
+  w.addEventListener("pointerdown",e=>{ if(pinned||e.pointerType==="mouse")return; at(e); setR("90px"); setTimeout(()=>{ if(!pinned)setR("0px"); },1500); });
+  const btn=$("#twXBtn");
+  if(btn)btn.onclick=()=>{ pinned=!pinned; btn.setAttribute("aria-pressed",String(pinned)); btn.textContent=pinned?"Hide the x-ray":"Show the whole x-ray";
+    w.style.setProperty("--x","50%"); w.style.setProperty("--y","50%"); setR(pinned?"75%":"0px"); };
+}
+window.addEventListener("loaderdone",()=>{ if(Chess){ M.entered=Date.now(); [...document.querySelectorAll(`#main :is(${REVEAL},${BARS},[data-count],.hl,.pc,.band)`)].forEach(e=>e.__mo=0); ScrollTrigger&&ScrollTrigger.getAll().forEach(t=>t.kill()); showView(VIEW); } });
 
 /* ---------- toast ---------- */
 let TOASTT=0;
@@ -5132,7 +5353,8 @@ $("#reset").onclick=()=>{
 boot().then(()=>{
         const known = DB.user && DB.user.length>0;
         $("#who").textContent=(known?DB.user:"not set")+" · engine ready";
-        buildSetup(); renderAll(); showView(VIEW);
+        buildSetup(); renderAll(); motionInit(); showView(VIEW);
+        if(window.__ld)window.__ld.done=true;
         if(!known && !DB.skipped){ showWelcome(); return; }
         if(!known){ stat("no account set",""); return; }
         // look for games played since last time, without being asked
@@ -5146,6 +5368,6 @@ boot().then(()=>{
           if(document.visibilityState==="visible"&&DB.user&&staleEnough())sync(true);
         });
       })
-      .catch(e=>{ $("#who").textContent="engine failed to load — check your connection"; });
+      .catch(e=>{ $("#who").textContent="engine failed to load — check your connection"; if(window.__ld)window.__ld.done=true; });
 </script>
 </body></html>
