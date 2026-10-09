@@ -793,6 +793,15 @@ html.nocur,html.nocur *{cursor:none!important}
 .strikes .x{color:var(--acc)}.strikes .o{color:var(--axis)}
 .pzspark{width:100%;height:90px;display:block;margin-top:var(--sp-3)}
 .pzspark polyline{fill:none;stroke:var(--acc);stroke-width:2.5;vector-effect:non-scaling-stroke}
+/* while solving, the header and mode tabs go, and the board takes the height they used */
+#v-puz.solving .vhead,#v-puz.solving .subnav{display:none}
+@media(min-width:561px){
+  #v-puz .play>div:first-child{width:clamp(300px,min(calc(100vh - var(--hdr) - 104px),64vw),940px);
+   width:clamp(300px,min(calc(100svh - var(--hdr) - 104px),64vw),940px)}
+}
+@media(min-width:561px) and (max-width:1000px){
+  #v-puz .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 104px)),940px)}
+}
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
 .tabbar{display:none}
 .qctx{display:none}
@@ -5249,6 +5258,7 @@ function pzStart(p){
       mode:RU?"rush":PZMODE};
   pzSel=null; clearUser("pzBoard");
   $("#pzIdle").style.display="none"; $("#pzRun").style.display="block";
+  if(!$("#v-puz").classList.contains("solving")){ $("#v-puz").classList.add("solving"); toTop(); }
   $("#pzTag").textContent=RU?"Rush · "+RUSHES[RU.kind].label:PZ.mode==="rated"?"Rated":(PZTHEMES[PZTHEME]||"Theme");
   $("#pzTurn").innerHTML=`<span class="dot2" style="background:${hero==="w"?'#fbfbf8':'#17171a'}"></span>You're ${hero==="w"?"White":"Black"}`;
   $("#pzPrompt").textContent=`${hero==="w"?"White":"Black"} to move`;
@@ -5365,7 +5375,8 @@ function pzNext(){
 }
 function pzQuit(){
   if(RU)return rushEnd();
-  PZ=null; $("#pzRun").style.display="none"; $("#pzIdle").style.display="block"; renderPuz();
+  PZ=null; $("#v-puz").classList.remove("solving");
+  $("#pzRun").style.display="none"; $("#pzIdle").style.display="block"; renderPuz();
 }
 
 /* Puzzle Rush: starts easy and climbs with every solve */
@@ -5403,7 +5414,7 @@ function rushEnd(){
   if(RU.score>prev)S.best[RU.kind]=RU.score;
   save();
   RUSHDONE={kind:RU.kind,score:RU.score,prev,res:RU.res};
-  RU=null; PZ=null; $("#pzClock").textContent="";
+  RU=null; PZ=null; $("#pzClock").textContent=""; $("#v-puz").classList.remove("solving");
   $("#pzRun").style.display="none"; $("#pzIdle").style.display="block";
   renderPuz();
 }
