@@ -32,6 +32,12 @@ engine over every move you played, and turns the ones you got wrong into drills.
   game's mistakes into a drill set
 
 Everything runs in the browser. No server, no account, nothing uploaded —
-your data stays in your own browser's local storage.
+your data stays in your own browser (IndexedDB, mirrored to local storage while it
+fits). Export and Import in the Account drawer move it between devices.
+
+It's installable: on a phone, use **Add to Home Screen**. A service worker (`sw.js`)
+keeps the page, its libraries and the engine on the device, so it opens instantly and
+drills work offline. The engine is the WebAssembly build of Stockfish, with the
+asm.js build as a fallback.
 
 Open it, type your chess.com username, and it does the rest.

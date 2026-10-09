@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Chess Trainer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#121212">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Chess Trainer"><meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800;900&family=IBM+Plex+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&display=swap">
 <style>
@@ -774,11 +780,40 @@ html.nocur,html.nocur *{cursor:none!important}
   *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;
     transition-duration:1ms!important;scroll-behavior:auto!important}
 }
+
+/* ---- phone tab bar: every section one tap away ---- */
+.tabbar{display:none}
+.qctx{display:none}
+.tgls{display:flex;flex-direction:column;gap:10px}
+.tgl{display:flex;align-items:center;gap:10px;font:600 12px var(--mono);text-transform:uppercase;cursor:pointer}
+.tgl input{width:20px;height:20px;margin:0;accent-color:var(--acc);cursor:pointer}
+@media(max-width:1000px){
+  .qctx{display:block;font:600 12px/1.45 var(--mono);text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  .qctx b{color:var(--ink)}
+}
+@media(max-width:700px){
+  :root{--tabh:60px}
+  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:45;
+   background:var(--ink);color:#A8A49B;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:var(--tabh);
+   background:none;border:0;color:inherit;font:600 9.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.02em;
+   cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;min-width:0;padding:0}
+  .tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .tabbar button.on{color:var(--plane)}
+  .tabbar button.on::before{content:"";position:absolute;top:0;left:24%;right:24%;height:3px;background:var(--acc)}
+  .menu-open .tabbar,.drawer-open .tabbar{visibility:hidden}
+  body{padding-bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px))}
+  .menubtn{display:none!important}
+  .toast{bottom:calc(var(--tabh) + 14px + env(safe-area-inset-bottom,0px))}
+  /* the session's Start button stays in reach while you read the steps */
+  .tw-cta:has(.btn.pri){position:sticky;bottom:calc(var(--tabh) + 10px + env(safe-area-inset-bottom,0px));z-index:6}
+  .tw-cta .btn.pri{flex:1 1 100%;justify-content:center}
+}
 </style></head>
 <body>
 <div class="loader" id="loader" aria-hidden="true">
   <div class="ld-word">Chess<br>Trainer<i>.</i></div>
-  <div class="ld-row"><span class="ld-note" id="ldNote">Setting up the pieces and waking the engine</span><span class="ld-count" id="ldCount">000</span></div>
+  <div class="ld-row"><span class="ld-note" id="ldNote">Setting up the pieces</span><span class="ld-count" id="ldCount">000</span></div>
   <i class="ld-bar" id="ldBar"></i>
 </div>
 <script>
@@ -837,6 +872,15 @@ html.nocur,html.nocur *{cursor:none!important}
   </nav>
 </div>
 
+
+<nav class="tabbar" aria-label="Sections">
+  <button data-nav="coach" data-go="coach"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Today</span></button>
+  <button data-nav="train" data-go="train"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg><span>Train</span></button>
+  <button data-nav="play" data-go="play"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6.5" r="3"/><path d="M9.2 10.5h5.6l1.6 7H7.6zM6 20.5h12"/></svg><span>Play</span></button>
+  <button data-nav="open" data-go="open"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5h6a2.5 2.5 0 0 1 2.5 2.5v12a2.5 2.5 0 0 0-2.5-2.5h-6zM20.5 5.5h-6A2.5 2.5 0 0 0 12 8v12a2.5 2.5 0 0 1 2.5-2.5h6z"/></svg><span>Openings</span></button>
+  <button data-nav="insights" data-go="weak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20.5V12M12 20.5V4.5M19 20.5v-6.5"/></svg><span>Insights</span></button>
+  <button data-nav="games" data-go="games"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6h11.5M8.5 12h11.5M8.5 18h11.5M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Games</span></button>
+</nav>
 <div class="scrim" id="scrim"></div>
 <aside class="drawer" id="drawer" data-lenis-prevent aria-hidden="true" aria-label="Account and data">
   <div class="drawer-in">
@@ -851,6 +895,11 @@ html.nocur,html.nocur *{cursor:none!important}
     <div class="themes" id="themes" role="group" aria-label="Board"></div>
     <h3>Pieces</h3>
     <div class="psets" id="psets" role="group" aria-label="Piece set"></div>
+    <h3>Feedback</h3>
+    <div class="tgls">
+      <label class="tgl"><input type="checkbox" id="optSound"> Move sounds</label>
+      <label class="tgl" id="optBuzzRow"><input type="checkbox" id="optBuzz"> Buzz on right and wrong answers</label>
+    </div>
     <h3>Your data</h3>
     <p class="note" style="margin:0">Everything lives in this browser. Export to keep a copy or move it to another device.</p>
     <div class="row">
@@ -908,6 +957,7 @@ html.nocur,html.nocur *{cursor:none!important}
   <div id="drillUI" style="display:none">
     <div class="play">
       <div>
+        <div class="qctx" id="qctx"></div>
         <div class="qbar">
           <span class="row" style="gap:8px"><span class="pill" id="motif">—</span><span class="turnchip" id="turn"></span></span>
           <span class="timer" id="timer">0s</span>
@@ -1199,7 +1249,11 @@ const pieceSVG=(type,white,extra="")=>(PSET!=="classic"&&setPieceSVG(PSET,type,w
 const pieceSVGClassic=(type,white,extra="")=>
   `<svg class="pc ${white?'w':'b'}${extra}" viewBox="0 0 45 45" aria-hidden="true">${PIECE[type]}</svg>`;
 const CDN_CHESS="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js";
-const CDN_SF="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js";
+const SF_DIR="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/";
+// The WebAssembly build of the same engine runs about four times faster than the
+// asm.js one, so every review, bot reply and hint comes back sooner. asm.js stays
+// as the fallback for a browser that can't run it.
+const CDN_SF=SF_DIR+"stockfish.js", CDN_SFW=SF_DIR+"stockfish.wasm.js";
 const DEPTH=12, THRESH=15;           // win% drop that counts as a "serious" error
 // How many new games one press of "Analyse my full history" will take on. Set
 // by what localStorage holds rather than by patience: past roughly this many,
@@ -1269,7 +1323,67 @@ function pruneOldest(){
 // user holding a gutted database *and* an unsaved one — and the banner's advice
 // to export first then produced a file with no move logs left in it. Take a
 // snapshot, and put it back if we never manage to save.
+/* IndexedDB holds hundreds of megabytes where localStorage holds about five, so it
+   is the real store now and nothing has to be pruned. localStorage keeps a mirror
+   while the data fits, which makes the first paint instant; whichever copy has the
+   later savedAt wins on load. If IndexedDB isn't available the old pruning path
+   below still runs. */
+const IDB={db:null,ok:false,writing:null,pending:null};
+function idbOpen(){
+  return new Promise(res=>{
+    try{
+      const r=indexedDB.open("chesstrainer",1);
+      r.onupgradeneeded=()=>r.result.createObjectStore("kv");
+      r.onsuccess=()=>{ IDB.db=r.result; res(true); };
+      r.onerror=r.onblocked=()=>res(false);
+    }catch(e){ res(false) }
+  });
+}
+function idbPut(str){
+  IDB.pending=str;
+  if(IDB.writing)return IDB.writing;
+  IDB.writing=(async()=>{
+    while(IDB.pending!=null){
+      const v=IDB.pending; IDB.pending=null;
+      await new Promise((res,rej)=>{
+        const tx=IDB.db.transaction("kv","readwrite");
+        tx.objectStore("kv").put(v,"db");
+        tx.oncomplete=res; tx.onerror=tx.onabort=()=>rej(tx.error);
+      });
+    }
+  })().catch(e=>{ IDB.ok=false; console.warn("IndexedDB save failed",e); save(); })
+     .finally(()=>{ IDB.writing=null; });
+  return IDB.writing;
+}
+const idbFlush=()=>IDB.writing||Promise.resolve();
+async function idbLoadNewer(){
+  if(!await idbOpen())return;
+  try{
+    const v=await new Promise((res,rej)=>{ const q=IDB.db.transaction("kv").objectStore("kv").get("db");
+      q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+    // Only start writing once the stored copy has been read, or an early save
+    // could overwrite a newer one before we've looked at it.
+    IDB.ok=true;
+    if(!v){ save(); return; }                       // first run on IndexedDB: copy everything over
+    const o=JSON.parse(v);
+    if((o.savedAt||0)>LOADED_AT){
+      DB=Object.assign({user:"",games:{},drills:[],attempts:[],oattempts:[],stats:null},o);
+      REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear();
+      applyTheme(DB.theme||"green"); applyPieces(DB.pieceSet||"classic");
+      const u=$("#user"); if(u)u.value=DB.user||"";
+    } else save();                                   // keep IndexedDB level with what we loaded
+  }catch(e){ console.warn("IndexedDB load failed",e); }
+}
 function save(){
+  DB.savedAt=Date.now();
+  if(IDB.ok){
+    let str; try{ str=JSON.stringify(DB) }catch(e){ return false }
+    idbPut(str);
+    try{ localStorage.setItem(KEY,str) }
+    catch(e){ try{ localStorage.removeItem(KEY) }catch(_){} }   // too big for the mirror; IndexedDB has it
+    storageFull=false; warnStore("");
+    return true;
+  }
   let trimmed=0, snapshot=null;
   for(;;){
     try{
@@ -1296,18 +1410,36 @@ function save(){
     }
   }
 }
+let LOADED_AT=0;   // when the localStorage copy was written — early saves re-stamp DB.savedAt
 function load(){ try{const r=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY); if(r)DB=Object.assign(DB,JSON.parse(r))}catch(e){}
+  LOADED_AT=DB.savedAt||0;
   if(dropCoachDrills())save(); }
 load();
 
 /* ---------- engine ---------- */
 let Chess=null, sfWorker=null, engineDead=false, SF_SRC=null;
-async function boot(){
-  const m=await import(CDN_CHESS); Chess=m.Chess||m.default;
-  const r=await fetch(CDN_SF);
+let ENGINE_READY=null, ENGINE_KIND="";
+async function loadChess(){ const m=await import(CDN_CHESS); Chess=m.Chess||m.default; }
+// The worker runs from a blob URL, so the wasm build can't find stockfish.wasm by a
+// relative path. Point its loader at the CDN instead.
+async function fetchEngine(url,wasm){
+  const r=await fetch(url);
   if(!r.ok)throw new Error("stockfish "+r.status);
-  SF_SRC=await r.text();          // kept so the worker can be restarted without refetching
-  sfWorker=await spawnWorker();
+  let src=await r.text();
+  if(wasm){
+    const hook="locateFile:function(e){return e}";
+    if(!src.includes(hook))throw new Error("unexpected wasm loader");
+    src=src.replace(hook,"locateFile:function(e){return "+JSON.stringify(SF_DIR)+"+e}");
+  }
+  return src;                     // kept so the worker can be restarted without refetching
+}
+async function bootEngine(){
+  if(typeof WebAssembly==="object"&&typeof WebAssembly.instantiate==="function"){
+    try{ SF_SRC=await fetchEngine(CDN_SFW,true); sfWorker=await spawnWorker(20000); ENGINE_KIND="wasm"; return; }
+    catch(e){ console.warn("WebAssembly engine didn't start, using the slower build",e);
+      try{ sfWorker&&sfWorker.terminate() }catch(_){} sfWorker=null; }
+  }
+  SF_SRC=await fetchEngine(CDN_SF,false); sfWorker=await spawnWorker(); ENGINE_KIND="asm";
 }
 function noteEngineDead(msg){
   warnStore(msg||"The chess engine stopped responding. It's being restarted — if this keeps happening, reload the page.");
@@ -1318,12 +1450,13 @@ function anyLegal(fen){
   try{ const g=new Chess(fen); const m=g.moves({verbose:true})[0];
        return m?m.from+m.to+(m.promotion||""):"0000"; }catch(e){ return "0000" }
 }
-async function spawnWorker(){
+async function spawnWorker(ms=30000){
   if(!SF_SRC)throw new Error("engine source not loaded");
   const w=new Worker(URL.createObjectURL(new Blob([SF_SRC],{type:'application/javascript'})));
   w.addEventListener('error',()=>{ needRestart=true; });
   await new Promise((res,rej)=>{
-    const to=setTimeout(()=>rej(new Error("engine never reported uciok")),30000);
+    const to=setTimeout(()=>{ try{w.terminate()}catch(e){} rej(new Error("engine never reported uciok")) },ms);
+    w.addEventListener('error',()=>{ clearTimeout(to); try{w.terminate()}catch(e){} rej(new Error("engine worker crashed")) },{once:true});
     const h=e=>{ if((''+e.data).includes('uciok')){clearTimeout(to);w.removeEventListener('message',h);res()} };
     w.addEventListener('message',h); w.postMessage('uci');
   });
@@ -1369,6 +1502,7 @@ async function pump(){
   pumping=true;
   try{
     while(jobs.length){
+      if(!sfWorker&&!engineDead&&ENGINE_READY){ try{ await ENGINE_READY }catch(e){} }
       if(needRestart)await restartEngine();
       jobs.sort((a,b)=>b.prio-a.prio||a.seq-b.seq);   // highest priority, then FIFO
       const job=jobs.shift();
@@ -2491,6 +2625,7 @@ function startDrill(){
   $("#prompt").textContent="Find the move you missed";
   $("#ctx").innerHTML=`From your game vs <b>${esc(cur.vs)}</b>, move ${esc(cur.movenum)}. You played <b>${esc(cur.played)}</b> here — `+
     `it'll be marked in red on the board. Find something better.`+leakNote(cur)+drillNote(cur);
+  setQctx(cur);
   $("#fb").innerHTML=""; $("#next").style.display="none"; $("#toggleRes").style.display="none";
   $("#hint").disabled=false; $("#skip").disabled=false;
   setTurnChip(); setLegend();
@@ -2538,6 +2673,35 @@ function onSquare(name){
   const marks={[name]:"sel"}; moves.forEach(m=>{if(!marks[m.to])marks[m.to]="dotm"});
   drawBoard(marks);
 }
+/* ---------- sounds and buzz ----------
+   Synthesised, so there are no audio files to load. Sound is off until you turn it
+   on; the buzz is on wherever the phone supports it (Android — iPhones don't let
+   web pages vibrate). */
+const FX=(()=>{
+  let ac=null;
+  const ctx=()=>{ if(!ac){ try{ ac=new (window.AudioContext||window.webkitAudioContext)() }catch(e){ return null } }
+    if(ac.state==="suspended")ac.resume(); return ac; };
+  const tone=(f,at,dur,type,vol)=>{ const a=ctx(); if(!a)return;
+    const o=a.createOscillator(), g=a.createGain(), t=a.currentTime+at;
+    o.type=type; o.frequency.value=f;
+    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+.01); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t+dur+.03); };
+  const knock=(cap)=>{ const a=ctx(); if(!a)return;
+    const n=Math.floor(a.sampleRate*.05), b=a.createBuffer(1,n,a.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,cap?2:4);
+    const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain();
+    src.buffer=b; f.type="bandpass"; f.frequency.value=cap?850:1500; f.Q.value=1.2; g.gain.value=cap?1:.7;
+    src.connect(f).connect(g).connect(a.destination); src.start(); };
+  const sound=()=>DB.sound===true, canBuzz=()=>!!navigator.vibrate;
+  const buzz=(p)=>{ if(DB.haptics!==false&&canBuzz())try{ navigator.vibrate(p) }catch(e){} };
+  return {
+    canBuzz,
+    move(cap){ if(sound())knock(!!cap); },
+    good(){ if(sound()){ tone(660,0,.14,"triangle",.18); tone(990,.09,.24,"triangle",.15); } buzz(30); },
+    bad(){ if(sound()){ tone(220,0,.18,"square",.06); tone(165,.13,.26,"square",.06); } buzz([50,60,50]); }
+  };
+})();
+function setQctx(d){ const e=$("#qctx"); if(e)e.innerHTML=d?`vs <b>${esc(d.vs)}</b> · move ${esc(d.movenum)} · you played <b>${esc(d.played)}</b>`:""; }
 async function submit(from,to){
   const d0=cur, secs=Math.round((Date.now()-t0)/1000);
   let promo='q';
@@ -2549,6 +2713,7 @@ async function submit(from,to){
   const g=new Chess(cur.fen);
   const mv=g.move({from,to,promotion:promo});
   if(!mv){ answered=false; return; }
+  FX.move(mv.captured);
   lastTry={from,to,san:mv.san};
   // compare the promotion piece too, so e8=N never scores as e8=Q
   const bestPromo=cur.best.slice(4,5);
@@ -2572,6 +2737,7 @@ async function submit(from,to){
     correct = !stalled && (cur.eb - yourCp) <= 30;
   } else yourCp=cur.eb;
   viewResult=false; setLegend(); showAnswerBoard();
+  if(!stalled){ if(correct)FX.good(); else FX.bad(); }
   $("#toggleRes").style.display="inline-block"; $("#toggleRes").textContent="Show result";
   const m=MOTIF[motifOf(cur)]||MOTIF.pos;
   // Two different scales end up in this box — the engine's evaluation in pawns,
@@ -2931,6 +3097,7 @@ async function playHuman(from,to){
   G.times.push(Math.round((Date.now()-G.t0)/1000));
   const m=G.ch.move({from,to,promotion:promo});
   if(!m)return;
+  FX.move(m.captured);
   G.lastMove={from,to,san:m?m.san:"",by:"you"};
   $("#lastMv").innerHTML=`<span class="q">you played</span> <b>${m?m.san:""}</b>`;
   drawGame(); if(checkOver())return;
@@ -2954,6 +3121,7 @@ async function maybeEngine(){
   if(!mv)for(const c of cands){ mv=tryMove(c.mv); if(mv)break; }
   if(!mv){ const legal=G.ch.moves({verbose:true}); if(!legal.length)return; mv=G.ch.move(legal[0].san); }
   if(!mv)return;
+  FX.move(mv.captured);
   G.lastMove={from:mv.from,to:mv.to,san:mv.san,by:"them"};
   const what = mv.captured ? ` <span class="q">— took your ${({p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen"})[mv.captured]}</span>` : "";
   $("#lastMv").innerHTML=`<span class="q">they played</span> <b>${mv.san}</b>${what}`;
@@ -4219,6 +4387,7 @@ function wireDrillLinks(){
     const m=MOTIF[motifOf(d)]||MOTIF.pos;
     $("#motif").className="pill "+m.cls; $("#motif").textContent=m.label;
     $("#ctx").innerHTML=`From your game vs <b>${esc(d.vs)}</b>, move ${esc(d.movenum)}. You played <b>${esc(d.played)}</b> here — it'll be marked in red.`+drillNote(d);
+    setQctx(d);
     $("#fb").innerHTML=""; $("#next").style.display="none"; $("#toggleRes").style.display="none";
     $("#hint").disabled=false; $("#skip").disabled=false;
     setTurnChip(); setLegend();
@@ -4514,7 +4683,7 @@ function renderToday(gs){
       <h1><span class="line"><span class="reveal">Today’s</span></span><span class="line"><span class="reveal" style="animation-delay:.08s"><em class="s">work.</em></span></span></h1>
       <p class="tw-sub">${lead}</p>
       <ol class="tw-list">${steps}</ol>
-      <div class="row">${cta}${gs.length?"":`<button class="btn" id="twAcct">Open Account</button>`}</div>
+      <div class="row tw-cta">${cta}${gs.length?"":`<button class="btn" id="twAcct">Open Account</button>`}</div>
     </div>
     <div class="tw-side">
       <div class="sticker" aria-label="Streak: ${st} days"><small>Streak</small><b>${st}</b><small>day${st===1?"":"s"}</small></div>
@@ -5047,7 +5216,7 @@ function setDrawer(open){
   $("#drawer").setAttribute("aria-hidden",String(!open));
   if(open)setTimeout(()=>$("#user").focus(),200); else if(document.activeElement&&$("#drawer").contains(document.activeElement))$("#acctBtn").focus();
 }
-$$(".hdr [data-go], .menu [data-go], .view .subnav [data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+$$(".hdr [data-go], .menu [data-go], .tabbar [data-go], .view .subnav [data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
 $("#menuBtn").onclick=()=>setMenu(!MENU);
 $("#acctBtn").onclick=()=>setDrawer(!DRAWER);
 $("#drawerX").onclick=()=>setDrawer(false);
@@ -5414,7 +5583,7 @@ $("#wgo").onclick=async()=>{
   if(ok===false){ $("#werr").textContent=`chess.com has no player called "${n}".`; return; }
   if(ok===null){ $("#werr").textContent="Couldn't reach chess.com — check your connection."; return; }
   $("#werr").textContent=""; DB.user=n; $("#user").value=n; save();
-  $("#welcome").style.display="none"; $("#who").textContent=n+" · engine ready";
+  $("#welcome").style.display="none"; $("#who").textContent=whoText();
   sync(true);
 };
 $("#wuser").addEventListener("keydown",e=>{if(e.key==="Enter")$("#wgo").click()});
@@ -5422,27 +5591,56 @@ $("#wskip").onclick=()=>{ DB.user=DB.user||""; DB.skipped=true; save(); $("#welc
 $("#reset").onclick=()=>{
   if(!confirm("Clear all games, drills and progress from this browser and start fresh?"))return;
   DB={user:"",games:{},drills:[],attempts:[],oattempts:[],stats:null,theme:DB.theme}; save();
-  location.reload();
+  idbFlush().finally(()=>location.reload());
 };
 
-boot().then(()=>{
-        const known = DB.user && DB.user.length>0;
-        $("#who").textContent=(known?DB.user:"not set")+" · engine ready";
-        buildSetup(); renderAll(); motionInit(); showView(VIEW);
-        if(window.__ld)window.__ld.done=true;
+function whoText(){
+  return (DB.user||"not set")+" · "+(sfWorker?"engine ready":engineDead?"engine didn't load":"engine loading…");
+}
+// Everything you've already got — games, drills, stats — is in this browser, so the
+// site draws straight away. The engine downloads behind it; anything that needs it
+// waits in the queue until it's up.
+(async()=>{
+  try{ await loadChess(); }
+  catch(e){ $("#who").textContent="couldn't load — check your connection"; if(window.__ld)window.__ld.done=true; return; }
+  await idbLoadNewer();
+  // #who later switches to your ratings; only touch it while it still talks about the engine
+  const engineWho=()=>{ const w=$("#who"); if(/engine|loading/.test(w.textContent))w.textContent=whoText(); };
+  ENGINE_READY=bootEngine().then(engineWho,e=>{
+    engineDead=true; engineWho();
+    noteEngineDead("The chess engine couldn't load, so new games can't be analysed. Check your connection and reload — your drills still work.");
+  });
+  const known = DB.user && DB.user.length>0;
+  $("#who").textContent=whoText();
+  buildSetup(); renderAll(); motionInit(); showView(VIEW);
+  if(window.__ld)window.__ld.done=true;
         if(!known && !DB.skipped){ showWelcome(); return; }
-        if(!known){ stat("no account set",""); return; }
-        // look for games played since last time, without being asked
-        if(staleEnough()) setTimeout(()=>sync(true),400);
-        else stat("checked "+clock(DB.lastSync),"");
-        // Auto-sync used to fire only here, at boot, so a tab left open all
-        // afternoon never noticed a game you'd just finished. Check again when
-        // you come back to it — same throttle, so flicking between tabs can't
-        // hammer chess.com.
-        document.addEventListener("visibilitychange",()=>{
-          if(document.visibilityState==="visible"&&DB.user&&staleEnough())sync(true);
-        });
-      })
-      .catch(e=>{ $("#who").textContent="engine failed to load — check your connection"; if(window.__ld)window.__ld.done=true; });
+  if(!known){ stat("no account set",""); return; }
+  // look for games played since last time, without being asked
+  if(staleEnough()) setTimeout(()=>sync(true),400);
+  else stat("checked "+clock(DB.lastSync),"");
+  // Auto-sync used to fire only here, at boot, so a tab left open all
+  // afternoon never noticed a game you'd just finished. Check again when
+  // you come back to it — same throttle, so flicking between tabs can't
+  // hammer chess.com.
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible"&&DB.user&&staleEnough())sync(true);
+  });
+})();
+// Sound and buzz settings live in the Account drawer.
+{
+  const so=$("#optSound"), bz=$("#optBuzz");
+  so.checked=DB.sound===true; bz.checked=DB.haptics!==false;
+  if(!FX.canBuzz())$("#optBuzzRow").style.display="none";
+  so.onchange=()=>{ DB.sound=so.checked; save(); if(so.checked)FX.move(false); };
+  bz.onchange=()=>{ DB.haptics=bz.checked; save(); if(bz.checked)FX.good(); };
+}
+// Installable and usable offline: the service worker keeps the page, the libraries
+// and the engine on the device.
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(e=>console.warn("service worker",e)));
+  if(navigator.storage&&navigator.storage.persist&&matchMedia("(display-mode: standalone)").matches)
+    navigator.storage.persist().catch(()=>{});
+}
 </script>
 </body></html>
