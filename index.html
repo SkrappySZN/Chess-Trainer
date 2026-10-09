@@ -722,6 +722,8 @@ ul.bul li{margin:7px 0}
 .cur{position:fixed;left:0;top:0;z-index:9998;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
  border:2px solid var(--acc);pointer-events:none;transition:width .25s var(--ease),height .25s var(--ease),margin .25s var(--ease),background .25s,opacity .2s;opacity:0}
 .cur.on{opacity:1}
+/* the ring stands in for the system cursor while a mouse is driving it */
+html.nocur,html.nocur *{cursor:none!important}
 .cur.big{width:54px;height:54px;margin:-27px 0 0 -27px;background:rgba(194,65,12,.12)}
 .cur.dot{width:8px;height:8px;margin:-4px 0 0 -4px;background:var(--acc);border-color:var(--acc)}
 .cur.down{transform-origin:center}
@@ -5101,10 +5103,11 @@ function countUp(el){
 function cursorInit(){
   if(!window.matchMedia||!matchMedia("(hover: hover) and (pointer: fine)").matches)return;
   const c=document.createElement("div"); c.className="cur"; c.setAttribute("aria-hidden","true"); document.body.appendChild(c);
-  let x=-100,y=-100,tx=x,ty=y;
-  addEventListener("pointermove",e=>{ tx=e.clientX; ty=e.clientY; c.classList.toggle("on",e.pointerType==="mouse"); },{passive:true});
-  document.addEventListener("pointerleave",()=>c.classList.remove("on"));
-  gsap.ticker.add(()=>{ x+=(tx-x)*.24; y+=(ty-y)*.24; c.style.transform=`translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`; });
+  // it replaces the system cursor, so it sits exactly on the pointer rather than trailing it
+  const root=document.documentElement;
+  const show=(on)=>{ c.classList.toggle("on",on); root.classList.toggle("nocur",on); };
+  addEventListener("pointermove",e=>{ c.style.transform=`translate3d(${e.clientX}px,${e.clientY}px,0)`; show(e.pointerType==="mouse"); },{passive:true});
+  document.addEventListener("pointerleave",()=>show(false));
   document.addEventListener("pointerover",e=>{
     const t=e.target.closest&&e.target.closest("button,a,[role=button],input,.ghead");
     const onBoard=!!(e.target.closest&&e.target.closest(".board,.xwrap"));
