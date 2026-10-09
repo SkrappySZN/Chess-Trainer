@@ -14,6 +14,12 @@ engine over every move you played, and turns the ones you got wrong into drills.
 - **Train** — positions from your own games where you missed something, resurfaced
   on a spaced-repetition schedule: get one right and it moves out to a longer
   interval, miss it and it comes back soon
+- **Puzzles** — tactics puzzles the way chess.com does them. **Rated** keeps a puzzle
+  rating that rises and falls with every first try; **Puzzle Rush** is three minutes, five
+  minutes or survival, starting easy and climbing, three strikes and you're out; **Themes**
+  is unrated practice on one idea (forks, pins, mate in two, rook endgames…). About 4,200
+  puzzles from the [Lichess puzzle database](https://database.lichess.org/#puzzles) (CC0)
+  ship in `puzzles.json`, so they work offline
 - **Play** — bots that make plausible mistakes, including **your past self** — every
   year you played enough rated games becomes an opponent that samples that year's
   own distribution of mistakes

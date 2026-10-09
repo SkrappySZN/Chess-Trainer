@@ -782,6 +782,18 @@ html.nocur,html.nocur *{cursor:none!important}
 }
 
 /* ---- phone tab bar: every section one tap away ---- */
+.pzthemes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:var(--sp-4)}
+.pzthemes .btn.opt{min-width:0;width:100%}
+.pzres{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
+.pzres span{font:700 11px var(--mono);padding:4px 7px;border:2px solid var(--ink);background:var(--surface)}
+.pzres .y{background:var(--good);color:#FFFFFF}.pzres .n{background:var(--acc);color:#FFFFFF}
+.rushline{display:flex;align-items:baseline;gap:14px;margin:6px 0 4px;font:600 12px var(--mono);text-transform:uppercase;color:var(--muted)}
+.rushline b{font:900 var(--t-3xl)/1 var(--display);letter-spacing:-.045em;color:var(--ink)}
+.strikes{font:900 22px var(--display);letter-spacing:.12em}
+.strikes .x{color:var(--acc)}.strikes .o{color:var(--axis)}
+.pzspark{width:100%;height:90px;display:block;margin-top:var(--sp-3)}
+.pzspark polyline{fill:none;stroke:var(--acc);stroke-width:2.5;vector-effect:non-scaling-stroke}
+.pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
 .tabbar{display:none}
 .qctx{display:none}
 .tgls{display:flex;flex-direction:column;gap:10px}
@@ -793,7 +805,7 @@ html.nocur,html.nocur *{cursor:none!important}
 }
 @media(max-width:700px){
   :root{--tabh:60px}
-  .tabbar{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:45;
+  .tabbar{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;z-index:45;
    background:var(--ink);color:#A8A49B;padding-bottom:env(safe-area-inset-bottom,0px)}
   .tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:var(--tabh);
    background:none;border:0;color:inherit;font:600 9.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.02em;
@@ -848,6 +860,7 @@ html.nocur,html.nocur *{cursor:none!important}
   <nav class="nav" aria-label="Main">
     <button data-nav="coach" data-go="coach">Today</button>
     <button data-nav="train" data-go="train">Train</button>
+    <button data-nav="puz" data-go="puz">Puzzles</button>
     <button data-nav="play" data-go="play">Play</button>
     <button data-nav="open" data-go="open">Openings</button>
     <button data-nav="insights" data-go="weak">Insights</button>
@@ -865,10 +878,11 @@ html.nocur,html.nocur *{cursor:none!important}
   <nav aria-label="Main menu">
     <button data-nav="coach" data-go="coach" style="--i:0"><span class="big">Today</span><span class="small">The session, the streak, the coach</span></button>
     <button data-nav="train" data-go="train" style="--i:1"><span class="big">Train</span><span class="small">Positions you missed</span></button>
-    <button data-nav="play" data-go="play" style="--i:2"><span class="big">Play</span><span class="small">Bots, including past you</span></button>
-    <button data-nav="open" data-go="open" style="--i:3"><span class="big">Openings</span><span class="small">Explore, learn, practise</span></button>
-    <button data-nav="insights" data-go="weak" style="--i:4"><span class="big">Insights</span><span class="small">Weaknesses and progress</span></button>
-    <button data-nav="games" data-go="games" style="--i:5"><span class="big">Games</span><span class="small">Every game, reviewed</span></button>
+    <button data-nav="puz" data-go="puz" style="--i:2"><span class="big">Puzzles</span><span class="small">Rated, Rush and themes</span></button>
+    <button data-nav="play" data-go="play" style="--i:3"><span class="big">Play</span><span class="small">Bots, including past you</span></button>
+    <button data-nav="open" data-go="open" style="--i:4"><span class="big">Openings</span><span class="small">Explore, learn, practise</span></button>
+    <button data-nav="insights" data-go="weak" style="--i:5"><span class="big">Insights</span><span class="small">Weaknesses and progress</span></button>
+    <button data-nav="games" data-go="games" style="--i:6"><span class="big">Games</span><span class="small">Every game, reviewed</span></button>
   </nav>
 </div>
 
@@ -876,6 +890,7 @@ html.nocur,html.nocur *{cursor:none!important}
 <nav class="tabbar" aria-label="Sections">
   <button data-nav="coach" data-go="coach"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="1"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Today</span></button>
   <button data-nav="train" data-go="train"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg><span>Train</span></button>
+  <button data-nav="puz" data-go="puz"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h4.2a2.3 2.3 0 1 1 4.6 0H17v4.2a2.3 2.3 0 1 1 0 4.6v3.2H4z"/></svg><span>Puzzles</span></button>
   <button data-nav="play" data-go="play"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="6.5" r="3"/><path d="M9.2 10.5h5.6l1.6 7H7.6zM6 20.5h12"/></svg><span>Play</span></button>
   <button data-nav="open" data-go="open"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5h6a2.5 2.5 0 0 1 2.5 2.5v12a2.5 2.5 0 0 0-2.5-2.5h-6zM20.5 5.5h-6A2.5 2.5 0 0 0 12 8v12a2.5 2.5 0 0 1 2.5-2.5h6z"/></svg><span>Openings</span></button>
   <button data-nav="insights" data-go="weak"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20.5V12M12 20.5V4.5M19 20.5v-6.5"/></svg><span>Insights</span></button>
@@ -989,6 +1004,42 @@ html.nocur,html.nocur *{cursor:none!important}
             <li>Is anything lined up to be hit twice?</li>
           </ol>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= PUZZLES ================= -->
+<div class="view" id="v-puz">
+  <header class="vhead sm"><div><div class="eyebrow">Tactics, rated to your level</div><h1>Puzzles<i>.</i></h1></div></header>
+  <div class="subnav" id="pzNav">
+    <button class="btn sm sub on" data-p="rated">Rated</button>
+    <button class="btn sm sub" data-p="rush">Puzzle Rush</button>
+    <button class="btn sm sub" data-p="themes">Themes</button>
+  </div>
+  <div id="pzIdle"></div>
+  <div id="pzRun" style="display:none">
+    <div class="play">
+      <div>
+        <div class="qbar">
+          <span class="row" style="gap:8px">
+            <span class="pill pos" id="pzTag">—</span>
+            <span class="turnchip" id="pzTurn"></span>
+          </span>
+          <span class="timer" id="pzClock"></span>
+        </div>
+        <div class="board" id="pzBoard"></div>
+      </div>
+      <div>
+        <h3 id="pzPrompt" style="font-size:26px;letter-spacing:-.02em">—</h3>
+        <div id="pzCtx" style="font-size:15px"></div>
+        <div class="row opctl">
+          <button class="btn pri" id="pzNext" style="display:none">Next puzzle →</button>
+          <button class="btn" id="pzHint">Hint</button>
+          <button class="btn" id="pzShow">Solution</button>
+          <button class="btn sm" id="pzExit">Stop</button>
+        </div>
+        <div id="pzFb"></div>
       </div>
     </div>
   </div>
@@ -5146,13 +5197,322 @@ function renderSoon(){
   lastRender=now; renderAll();
 }
 
+/* ---------- puzzles ----------
+   A few thousand of the best-rated puzzles from Lichess's puzzle database (CC0),
+   bundled in puzzles.json so they work offline. Every puzzle starts one move early:
+   the first move of the line is the opponent's and is played for you. Three ways
+   in, as on chess.com — Rated moves a puzzle rating up and down, Puzzle Rush is as
+   many as you can before the clock or three misses, and Themes is unrated practice
+   on one idea. */
+const PZTHEMES={mateIn1:"Mate in 1",mateIn2:"Mate in 2",mateIn3:"Mate in 3",fork:"Fork",pin:"Pin",skewer:"Skewer",
+  discoveredAttack:"Discovered attack",doubleCheck:"Double check",hangingPiece:"Hanging piece",trappedPiece:"Trapped piece",
+  sacrifice:"Sacrifice",deflection:"Deflection",attraction:"Attraction",capturingDefender:"Remove the defender",
+  clearance:"Clearance",interference:"Interference",intermezzo:"In-between move",xRayAttack:"X-ray",
+  backRankMate:"Back-rank mate",smotheredMate:"Smothered mate",kingsideAttack:"Kingside attack",exposedKing:"Exposed king",
+  quietMove:"Quiet move",defensiveMove:"Defensive move",zugzwang:"Zugzwang",promotion:"Promotion",advancedPawn:"Advanced pawn",
+  opening:"Opening",middlegame:"Middlegame",endgame:"Endgame",rookEndgame:"Rook endgame",pawnEndgame:"Pawn endgame"};
+const RUSHES={r3:{label:"3 minutes",secs:180,sub:"Three minutes, three strikes"},
+              r5:{label:"5 minutes",secs:300,sub:"Five minutes, three strikes"},
+              surv:{label:"Survival",secs:0,sub:"No clock — go until your third miss"}};
+let PZSET=null, PZLOAD=null, PZ=null, pzSel=null, PZMODE="rated", PZTHEME=null, RU=null, RUSHDONE=null;
+function pzLoad(){
+  if(PZSET)return Promise.resolve(PZSET);
+  return PZLOAD||(PZLOAD=fetch("puzzles.json").then(r=>{ if(!r.ok)throw new Error(r.status); return r.json(); })
+    .then(a=>PZSET=a.map(x=>({id:x[0],fen:x[1],line:x[2].split(" "),r:x[3],th:x[4]?x[4].split(" "):[]})))
+    .catch(e=>{ PZLOAD=null; throw e; }));
+}
+function pzStore(){ return DB.pz||(DB.pz={rating:1200,n:0,seen:{},log:[],best:{}}); }
+// a random puzzle near `target`, widening the window until something qualifies
+function pzPick(target,ok){
+  for(let w=75;w<=3000;w*=2){
+    const pool=PZSET.filter(p=>Math.abs(p.r-target)<=w&&ok(p));
+    if(pool.length)return pool[Math.floor(Math.random()*pool.length)];
+  }
+  return null;
+}
+function pzNextRated(){
+  const S=pzStore(), target=S.rating+Math.round((Math.random()-.4)*160);
+  let p=pzPick(target,x=>!S.seen[x.id]);
+  if(!p){ S.seen={}; p=pzPick(target,()=>true); }
+  return p;
+}
+function pzNextTheme(){
+  const S=pzStore();
+  return pzPick(S.rating,x=>x.th.includes(PZTHEME)&&!S.seen[x.id])||pzPick(S.rating,x=>x.th.includes(PZTHEME));
+}
+const pzLabel=(p)=>p.th.map(t=>PZTHEMES[t]).filter(Boolean).slice(0,3).join(" · ");
+
+function pzStart(p){
+  if(!p)return;
+  const hero=turnOf(p.fen)==="w"?"b":"w";
+  PZ={p,g:new Chess(p.fen),hero,i:0,busy:true,done:false,scored:false,failed:false,hints:0,t0:0,last:null,
+      mode:RU?"rush":PZMODE};
+  pzSel=null; clearUser("pzBoard");
+  $("#pzIdle").style.display="none"; $("#pzRun").style.display="block";
+  $("#pzTag").textContent=RU?"Rush · "+RUSHES[RU.kind].label:PZ.mode==="rated"?"Rated":(PZTHEMES[PZTHEME]||"Theme");
+  $("#pzTurn").innerHTML=`<span class="dot2" style="background:${hero==="w"?'#fbfbf8':'#17171a'}"></span>You're ${hero==="w"?"White":"Black"}`;
+  $("#pzPrompt").textContent=`${hero==="w"?"White":"Black"} to move`;
+  $("#pzFb").innerHTML=""; $("#pzNext").style.display="none";
+  $("#pzHint").style.display=$("#pzShow").style.display=RU?"none":"";
+  $("#pzHint").disabled=$("#pzShow").disabled=false;
+  $("#pzExit").textContent=RU?"End run":"Stop";
+  pzCtx();
+  pzDraw();
+  setTimeout(()=>{ if(PZ&&PZ.p===p)pzReply(); },RU?250:650);
+}
+function pzCtx(){
+  const S=pzStore();
+  if(RU){
+    const x=RU.strikes, s="<span class=x>✕</span>".repeat(x)+"<span class=o>✕</span>".repeat(3-x);
+    $("#pzCtx").innerHTML=`<div class="rushline"><b>${RU.score}</b> solved <span class="strikes">${s}</span></div>`;
+  } else if(PZ.mode==="rated")
+    $("#pzCtx").innerHTML=`<p>Find the best move, and keep finding them until the line is over. Your puzzle rating is <b>${S.rating}</b>.</p>`;
+  else
+    $("#pzCtx").innerHTML=`<p>Practice: <b>${esc(PZTHEMES[PZTHEME]||"")}</b>. These don't move your rating.</p>`;
+}
+function pzDraw(marks={},arrows=null){
+  if(!PZ)return;
+  const M=Object.assign({},marks), L=PZ.last;
+  if(L&&!M[L.from]&&!M[L.to]){ M[L.from]="lmf"; M[L.to]="lmt"; }
+  renderBoard($("#pzBoard"),PZ.g.fen(),PZ.hero==="b",M,arrows);
+}
+const uciMove=(g,u)=>g.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]||undefined});
+function pzReply(){                          // the opponent's half of the line
+  const P=PZ; if(!P)return;
+  const mv=uciMove(P.g,P.p.line[P.i]);
+  P.i++; P.last=mv; FX.move(mv&&mv.captured);
+  P.busy=false; if(!P.t0)P.t0=Date.now();
+  pzDraw();
+}
+async function pzTry(from,to){
+  const P=PZ; if(!P||P.busy||P.done)return;
+  let promo;
+  if(isPromotion(P.g,from,to)){ promo=await askPromotion(P.hero); if(PZ!==P||P.busy||P.done)return; }
+  const t=new Chess(P.g.fen()), mv=t.move({from,to,promotion:promo||"q"}); if(!mv)return;
+  const want=P.p.line[P.i];
+  // any mate ends the puzzle, even one that isn't the move on file
+  const right=from+to+(mv.promotion||"")===want||t.in_checkmate();
+  if(right){
+    P.g.move({from,to,promotion:promo||"q"}); P.last=mv; P.i++; FX.move(mv.captured);
+    if(P.i>=P.p.line.length||t.in_checkmate())return pzSolved();
+    P.busy=true; pzDraw();
+    setTimeout(()=>{ if(PZ===P)pzReply(); },380);
+    return;
+  }
+  P.busy=true; FX.bad();
+  renderBoard($("#pzBoard"),t.fen(),P.hero==="b",{[from]:"bad",[to]:"bad"},[{from,to,color:RED}]);
+  if(RU)return rushMiss();
+  const d=pzScore(false); P.failed=true;
+  $("#pzFb").innerHTML=`<div class="fb bad"><div class="hd">Incorrect${pzDelta(d)}</div>
+    <b>${esc(mv.san)}</b> isn't it. Keep trying, or hit <b>Solution</b>.</div>`;
+  setTimeout(()=>{ if(PZ===P){ P.busy=false; pzDraw(); } },800);
+}
+const pzDelta=(d)=>PZ&&PZ.mode==="rated"&&d?` <span style="color:${d>0?"var(--good)":"var(--acc)"}">${d>0?"+":"−"}${Math.abs(d)}</span>`:"";
+function pzScore(ok){
+  const P=PZ, S=pzStore(); if(P.scored)return 0; P.scored=true;
+  let d=0;
+  if(P.mode!=="rush")S.seen[P.p.id]=1;
+  if(P.mode==="rated"){
+    const K=S.n<20?40:S.n<60?24:16, E=1/(1+Math.pow(10,(P.p.r-S.rating)/400));
+    d=Math.round(K*((ok?1:0)-E)); if(ok&&d<1)d=1; if(!ok&&d>-1)d=-1;
+    S.rating=Math.max(100,S.rating+d); S.n++;
+  }
+  S.log.push({id:P.p.id,r:P.p.r,ok,m:P.mode,d,ra:S.rating,secs:Math.round((Date.now()-(P.t0||Date.now()))/1000),ts:Date.now()});
+  if(S.log.length>600)S.log=S.log.slice(-600);
+  save(); return d;
+}
+function pzSolved(){
+  const P=PZ; P.done=true; P.busy=true; FX.good();
+  if(RU){ pzDraw(); return rushHit(); }
+  const d=pzScore(true), secs=Math.round((Date.now()-P.t0)/1000);
+  pzDraw();
+  $("#pzFb").innerHTML=`<div class="fb ${P.failed?"bad":"ok"}">
+    <div class="hd">${P.failed?"Solved, after a miss":"Solved"}${pzDelta(d)}</div>
+    ${P.failed?"The first try is the one that counts. ":`${secs} second${secs===1?"":"s"}. `}
+    Puzzle rated <b>${P.p.r}</b>${pzLabel(P.p)?" — "+esc(pzLabel(P.p)):""}.
+    <div class="note" style="margin-top:8px"><a href="https://lichess.org/training/${encodeURIComponent(P.p.id)}" target="_blank" rel="noopener">This puzzle on Lichess ↗</a></div>
+  </div>`;
+  pzCtx();
+  $("#pzNext").style.display="inline-block"; $("#pzHint").disabled=$("#pzShow").disabled=true;
+}
+function pzHint(){
+  const P=PZ; if(!P||P.busy||P.done)return;
+  const u=P.p.line[P.i], f=u.slice(0,2), t=u.slice(2,4);
+  if(!P.scored){ const d=pzScore(false); P.failed=true;
+    $("#pzFb").innerHTML=`<div class="fb"><div class="hd">Hint${pzDelta(d)}</div>A hint counts as a miss — you can still finish the puzzle.</div>`; }
+  P.hints++;
+  pzDraw(P.hints>1?{[f]:"hint",[t]:"hint"}:{[f]:"hint"},P.hints>1?[{from:f,to:t,color:"#f0a92a"}]:null);
+}
+function pzSolution(){
+  const P=PZ; if(!P||P.busy||P.done)return;
+  const d=P.scored?0:pzScore(false); P.failed=true; P.busy=true; P.done=true;
+  $("#pzHint").disabled=$("#pzShow").disabled=true;
+  const step=()=>{
+    if(PZ!==P)return;
+    if(P.i>=P.p.line.length){
+      $("#pzFb").innerHTML=`<div class="fb bad"><div class="hd">That's the line${pzDelta(d)}</div>
+        Puzzle rated <b>${P.p.r}</b>${pzLabel(P.p)?" — "+esc(pzLabel(P.p)):""}.</div>`;
+      pzCtx(); $("#pzNext").style.display="inline-block"; return;
+    }
+    const mine=P.i%2===1, mv=uciMove(P.g,P.p.line[P.i]); P.i++; P.last=mv; FX.move(mv&&mv.captured);
+    pzDraw(mine?{[mv.from]:"ok",[mv.to]:"ok"}:{},mine?[{from:mv.from,to:mv.to,color:GREEN}]:null);
+    setTimeout(step,750);
+  };
+  step();
+}
+function pzNext(){
+  if(PZMODE==="themes")pzStart(pzNextTheme()); else pzStart(pzNextRated());
+}
+function pzQuit(){
+  if(RU)return rushEnd();
+  PZ=null; $("#pzRun").style.display="none"; $("#pzIdle").style.display="block"; renderPuz();
+}
+
+/* Puzzle Rush: starts easy and climbs with every solve */
+function rushStart(kind){
+  pzLoad().then(()=>{
+    RUSHDONE=null;
+    RU={kind,score:0,strikes:0,used:new Set(),res:[],end:RUSHES[kind].secs?Date.now()+RUSHES[kind].secs*1000:0,t0:Date.now()};
+    clearInterval(rushStart.t); rushStart.t=setInterval(rushTick,250); rushTick();
+    rushNext();
+  }).catch(()=>toast("Couldn't load the puzzles. Check your connection and try again."));
+}
+function rushTick(){
+  if(!RU)return clearInterval(rushStart.t);
+  const el=$("#pzClock");
+  if(!RU.end){ const s=Math.round((Date.now()-RU.t0)/1000); el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`; el.className="timer"; return; }
+  const left=Math.max(0,Math.ceil((RU.end-Date.now())/1000));
+  el.textContent=`${Math.floor(left/60)}:${String(left%60).padStart(2,"0")}`;
+  el.className="timer"+(left<=15?" alarm":"");
+  if(left<=0)rushEnd();
+}
+function rushNext(){
+  const p=pzPick(450+RU.score*60+Math.round(Math.random()*60),x=>!RU.used.has(x.id));
+  if(!p)return rushEnd();
+  RU.used.add(p.id); pzStart(p);
+}
+function rushHit(){ RU.score++; RU.res.push({r:PZ.p.r,ok:true}); pzScore(true); pzCtx(); setTimeout(()=>{ if(RU)rushNext(); },300); }
+function rushMiss(){
+  RU.strikes++; RU.res.push({r:PZ.p.r,ok:false}); pzScore(false); pzCtx();
+  setTimeout(()=>{ if(!RU)return; if(RU.strikes>=3)rushEnd(); else rushNext(); },750);
+}
+function rushEnd(){
+  if(!RU)return;
+  clearInterval(rushStart.t);
+  const S=pzStore(), prev=S.best[RU.kind]||0;
+  if(RU.score>prev)S.best[RU.kind]=RU.score;
+  save();
+  RUSHDONE={kind:RU.kind,score:RU.score,prev,res:RU.res};
+  RU=null; PZ=null; $("#pzClock").textContent="";
+  $("#pzRun").style.display="none"; $("#pzIdle").style.display="block";
+  renderPuz();
+}
+
+/* the page you land on for each mode */
+function pzSpark(log){
+  if(log.length<2)return"";
+  const v=log.map(x=>x.ra), lo=Math.min(...v)-20, hi=Math.max(...v)+20, n=v.length-1;
+  const pts=v.map((y,i)=>`${(i/n*100).toFixed(2)},${(100-(y-lo)/(hi-lo)*100).toFixed(2)}`).join(" ");
+  return `<svg class="pzspark" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Puzzle rating over your last ${log.length} rated puzzles"><polyline points="${pts}"/></svg>`;
+}
+function renderPuz(){
+  $$("#pzNav .sub").forEach(b=>b.classList.toggle("on",b.dataset.p===PZMODE));
+  if(PZ||RU)return;                                     // mid-puzzle: leave the board alone
+  const el=$("#pzIdle"), S=pzStore();
+  if(!PZSET){
+    el.innerHTML=`<div class="card empty">Loading puzzles…</div>`;
+    pzLoad().then(()=>{ if(VIEW==="puz")renderPuz(); })
+      .catch(()=>{ el.innerHTML=`<div class="card empty">Couldn't load the puzzles. Check your connection and open this page again.</div>`; });
+    return;
+  }
+  if(PZMODE==="rated"){
+    const rated=S.log.filter(x=>x.m==="rated"), last=rated.slice(-25);
+    const acc=last.length?Math.round(100*last.filter(x=>x.ok).length/last.length):0;
+    const peak=rated.length?Math.max(...rated.map(x=>x.ra)):S.rating;
+    el.innerHTML=`
+      <div class="tiles">
+        <div class="tile"><span class="v">${S.rating}</span><div class="k">puzzle rating${rated.length?"":" — everyone starts at 1200"}</div></div>
+        <div class="tile ${acc>=70?'g':acc>=50?'w':last.length?'c':''}"><span class="v">${last.length?acc+"%":"—"}</span><div class="k">solved, last ${last.length||25} puzzles</div></div>
+        <div class="tile"><span class="v">${rated.filter(x=>x.ok).length}</span><div class="k">solved of ${rated.length} tried</div></div>
+        <div class="tile"><span class="v">${peak}</span><div class="k">highest rating</div></div>
+      </div>
+      <div class="card">
+        <h3>Rated puzzles</h3>
+        <p style="font-size:14px">Puzzles are picked close to your rating. Solve one and your rating goes up; a wrong
+        move, a hint or the solution brings it down — by more when the puzzle was easy for you. Only the first try counts.</p>
+        <button class="btn pri" id="pzGo">${rated.length?"Keep solving":"Start solving"}</button>
+        ${pzSpark(rated.slice(-80))}
+        ${rated.length?`<div class="pzres">${rated.slice(-20).reverse().map(x=>`<span class="${x.ok?"y":"n"}" title="Puzzle rated ${x.r}">${x.ok?"✓":"✕"} ${x.r}</span>`).join("")}</div>`:""}
+      </div>`;
+    $("#pzGo").onclick=()=>pzStart(pzNextRated());
+  } else if(PZMODE==="rush"){
+    const R=RUSHDONE;
+    el.innerHTML=`
+      ${R?`<div class="card" style="margin-bottom:var(--sp-5)">
+        <div class="eyebrow">${esc(RUSHES[R.kind].label)} · run over</div>
+        <div class="pzbig">${R.score}</div>
+        <p style="font-size:15px">${R.score>R.prev?(R.prev?`New best — up from ${R.prev}.`:"Your first score on the board.")
+          :`Your best is ${R.prev}.`}</p>
+        ${R.res.length?`<div class="pzres">${R.res.map(x=>`<span class="${x.ok?"y":"n"}">${x.ok?"✓":"✕"} ${x.r}</span>`).join("")}</div>`:""}
+        <div class="row" style="margin-top:var(--sp-4)"><button class="btn pri" data-rush="${R.kind}">Go again</button></div>
+      </div>`:""}
+      <div class="tiles">
+        ${Object.entries(RUSHES).map(([k,v])=>`<div class="tile"><span class="v">${S.best[k]||"—"}</span><div class="k">best, ${esc(v.label.toLowerCase())}</div></div>`).join("")}
+      </div>
+      <div class="card">
+        <h3>Puzzle Rush</h3>
+        <p style="font-size:14px">The first puzzles are easy and every one you solve makes the next one harder.
+        One wrong move and that puzzle's gone — three and the run is over. No hints.</p>
+        <div class="row" style="gap:12px">
+          ${Object.entries(RUSHES).map(([k,v])=>`<button class="btn opt" data-rush="${k}">${esc(v.label)}<br><small>${esc(v.sub)}</small></button>`).join("")}
+        </div>
+      </div>`;
+    $$("#pzIdle [data-rush]").forEach(b=>b.onclick=()=>rushStart(b.dataset.rush));
+  } else {
+    const count={}; PZSET.forEach(p=>p.th.forEach(t=>count[t]=(count[t]||0)+1));
+    el.innerHTML=`
+      <div class="card">
+        <h3>Practise one idea</h3>
+        <p style="font-size:14px">Pick a theme and get puzzles of just that kind, near your rating. Unrated, so take your time.</p>
+        <div class="pzthemes">
+          ${Object.keys(PZTHEMES).filter(t=>count[t]).map(t=>`<button class="btn opt" data-th="${t}">${esc(PZTHEMES[t])}<br><small>${count[t]} puzzles</small></button>`).join("")}
+        </div>
+      </div>`;
+    $$("#pzIdle [data-th]").forEach(b=>b.onclick=()=>{ PZTHEME=b.dataset.th; pzStart(pzNextTheme()); });
+  }
+}
+$$("#pzNav .sub").forEach(b=>b.onclick=()=>{
+  if(RU)rushEnd();
+  PZ=null; PZMODE=b.dataset.p; if(PZMODE!=="rush")RUSHDONE=null;
+  $("#pzRun").style.display="none"; $("#pzIdle").style.display="block"; renderPuz();
+});
+$("#pzNext").onclick=pzNext;
+$("#pzHint").onclick=pzHint;
+$("#pzShow").onclick=pzSolution;
+$("#pzExit").onclick=pzQuit;
+wireBoardInput($("#pzBoard"),{
+  enabled:()=>!!PZ&&!PZ.busy&&!PZ.done,
+  click:(n)=>{ if(!PZ||PZ.busy||PZ.done)return;
+    if(pzSel){ const legal=PZ.g.moves({verbose:true}).some(m=>m.from===pzSel&&m.to===n);
+      if(legal){ const f=pzSel; pzSel=null; pzTry(f,n); return; } }
+    const mv=PZ.g.moves({verbose:true}).filter(m=>m.from===n);
+    if(!mv.length){ pzSel=null; pzDraw(); return; }
+    pzSel=n; const marks={[n]:"sel"}; mv.forEach(m=>{if(!marks[m.to])marks[m.to]="dotm"}); pzDraw(marks);
+  },
+  selected:()=>pzSel,
+  legal:(f,t)=>{ try{ return PZ.g.moves({verbose:true}).some(m=>m.from===f&&m.to===t) }catch(e){ return false } },
+  commit:(f,t)=>{ pzSel=null; pzTry(f,t) },
+  cancel:()=>{ pzSel=null; pzDraw() },
+  redraw:()=>pzDraw()
+});
+
 /* ---------- navigation ----------
    One way to change view, so the header, the menu, the Insights sub-tabs and
    every "Drill this" button agree about where you are. The view itself flips
    under a sheet of colour, which is the one place the app spends motion on
    purpose: it says "somewhere else now" in the time a fade would take anyway. */
-const NAVOF={coach:"coach",train:"train",play:"play",open:"open",weak:"insights",prog:"insights",games:"games"};
-const VIEWNAME={coach:"Today",train:"Train",play:"Play",open:"Openings",weak:"Insights",prog:"Insights",games:"Games"};
+const NAVOF={coach:"coach",train:"train",puz:"puz",play:"play",open:"open",weak:"insights",prog:"insights",games:"games"};
+const VIEWNAME={coach:"Today",train:"Train",puz:"Puzzles",play:"Play",open:"Openings",weak:"Insights",prog:"Insights",games:"Games"};
 let VIEW="coach", WIPE=0;
 const motionOK=()=>!(REDUCED&&REDUCED.matches);
 function showView(v){
@@ -5169,6 +5529,7 @@ function showView(v){
   if(v==="weak")renderWeak();
   if(v==="coach")renderCoach();
   if(v==="open")renderExplorer();
+  if(v==="puz")renderPuz();
   M.entered=Date.now();
   if(M.on){ motionScan(true); } else enterCounts($("#v-"+v));
 }
