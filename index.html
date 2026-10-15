@@ -2909,21 +2909,39 @@ $("#skip").onclick=()=>{ if(!cur)return; DB.attempts.push({id:cur.id,motif:motif
 $("#next").onclick=()=>startDrill();
 
 /* ---------- play vs engine ---------- */
-// this build has Skill Level but no UCI_Elo, so weak play is done by sampling
-// among the top MultiPV lines, plus an occasional fully random move.
-// Weak play is produced by choosing among the ENGINE'S OWN candidate moves,
-// never by playing a random legal move. A random move hangs a queen for nothing
-// and reads as broken; the engine's 6th-best move reads as a human mistake.
+// This build has Skill Level but no UCI_Elo, so weak play is made by choosing
+// among the ENGINE'S OWN evaluation of every legal move, never a random one.
+//
+// The old bots picked from the engine's top 6–10 moves, and that was the bug:
+// the move a 500 player actually makes — the one that hangs a knight — is
+// almost never in the top ten, so "Beginner" could only make small mistakes
+// and took every piece you left hanging. Measured head to head it played
+// ~500 points above its label.
+//
+// Now every level is built from how real ~500 rapid players lose
+// centipawns (HUMAN500, below). Each move the bot either plays near-best
+// (probability `sharp`) or makes a ~500-player move, its cost scaled by
+// `sloppy`, and plays the legal move whose cost is closest. The ratings come
+// from playing each level against a bot that copies HUMAN500, which matched
+// those players' blunder rate, average loss and how often they miss a free
+// piece; levels above ~1000 were chained level against level.
+//
+// How much a ~500 rapid player's move costs, in centipawns: 40 evenly spaced
+// quantiles of 2,328 moves from 80 rated rapid/blitz games (Stockfish 10,
+// depth 10, moves in decided positions left out). A ~500 player throws away
+// 3+ pawns on 1 move in 8 and misses about half the pieces left hanging.
+const HUMAN500=[0,0,0,0,7,13,16,20,24,27,30,33,37,41,45,49,54,57,63,68,73,79,86,92,
+  99,108,119,128,139,152,168,190,213,243,282,327,398,516,658,900];
 const LEVELS=[
-  {id:0,name:"Beginner",note:"~600 · misses tactics like a beginner",pv:10,mt:80,skill:0,
-   pErr:.30,errLo:150,errHi:700,drift:70},
-  {id:1,name:"Casual",  note:"~800 · plausible mistakes, no free gifts",pv:8,mt:130,skill:2,
-   pErr:.18,errLo:120,errHi:430,drift:45},
-  {id:2,name:"Club",    note:"~1200 · punishes anything loose",pv:6,mt:260,skill:8,
-   pErr:.09,errLo:70,errHi:230,drift:25},
-  {id:3,name:"Brutal",  note:"full strength · for calibration",pv:1,mt:600,skill:20,
-   pErr:0,errLo:0,errHi:0,drift:0},
-  {id:4,name:"Mirror",  note:"plays at YOUR measured accuracy",pv:10,mt:150,skill:4,mirror:true},
+  {id:5,name:"Newcomer",elo:400, note:"~400 · hangs pieces, misses yours",  sloppy:1.35,sharp:0,  depth:6},
+  {id:0,name:"Beginner",elo:600, note:"~600 · misses about half your blunders",sloppy:1,sharp:.15,depth:6},
+  {id:1,name:"Casual",  elo:800, note:"~800 · still drops pieces now and then",sloppy:1,sharp:.47,depth:6},
+  {id:6,name:"Improver",elo:1000,note:"~1000 · takes most of what you leave", sloppy:1,sharp:.75,depth:6},
+  {id:2,name:"Club",    elo:1200,note:"~1200 · punishes anything loose",     sloppy:1,sharp:.87,depth:6},
+  {id:7,name:"Strong",  elo:1500,note:"~1500 · rarely gives anything away",  sloppy:1,sharp:.94,depth:8},
+  {id:8,name:"Expert",  elo:1800,note:"~1800 · you'll have to earn it",       sloppy:1,sharp:.98,depth:10},
+  {id:3,name:"Brutal",  note:"full strength · for calibration",pv:1,mt:600,skill:20},
+  {id:4,name:"Mirror",  note:"plays at YOUR measured accuracy",depth:8,mirror:true},
 ];
 // "2025-08" -> 1202508, stable for as long as that month exists
 // id derived from the era itself, not its position in the list — an index-based
@@ -2934,7 +2952,7 @@ const eraId=(key)=>2000000+(+String(key).slice(0,4));
 function allLevels(){
   const now=new Date().getFullYear();
   return LEVELS.concat(eras().map(c=>({
-    id:eraId(c.key), capsule:c, mirror:true, pv:10, mt:150, skill:4,
+    id:eraId(c.key), capsule:c, mirror:true, depth:8,
     name:"You · "+c.label,
     note:`${c.games} games${c.rating?` · rated ~${c.rating}`:""} · ${c.acpl} acpl`+
          (+c.key===now?" · you now":"")
@@ -3011,10 +3029,10 @@ function myLossProfile(){
 function sampleTargetLoss(lv,profile){
   if(lv.mirror){
     if(profile&&profile.length>=40)return profile[Math.floor(Math.random()*profile.length)];
-    return Math.random()<.18?120+Math.random()*310:Math.random()*45;   // fallback ≈ Casual
+    return HUMAN500[Math.floor(Math.random()*HUMAN500.length)];   // fallback ≈ 500
   }
-  if(Math.random()<lv.pErr)return lv.errLo+Math.random()*(lv.errHi-lv.errLo);
-  return Math.random()*lv.drift;
+  if(Math.random()<lv.sharp)return Math.random()*20;
+  return lv.sloppy*HUMAN500[Math.floor(Math.random()*HUMAN500.length)];
 }
 // Every game gets an id. Engine calls are async and the queue is shared, so a
 // reply computed for an abandoned game could otherwise arrive after you'd already
@@ -3025,12 +3043,16 @@ const liveGame=(id)=>!!G&&G.id===id&&!G.over;
 function engineMove(fen,lv){
   const cands={};
   const list=()=>Object.keys(cands).sort((a,b)=>+a-+b).map(k=>cands[k]).filter(c=>c&&c.mv);
+  // full strength thinks for a fixed time; every other level scores EVERY legal
+  // move (MultiPV above the most a position can have) to a fixed depth, so the
+  // bot plays the same on a slow phone as on a fast laptop
+  const full=lv.pv===1;
   return uciCall(PRIO.LIVE,[
-    'setoption name MultiPV value '+lv.pv,
-    'setoption name Skill Level value '+lv.skill,
+    'setoption name MultiPV value '+(full?1:256),
+    'setoption name Skill Level value '+(full?lv.skill:20),
     'position fen '+fen,
-    'go movetime '+lv.mt
-  ], lv.mt+ENGINE_MS, (s)=>{
+    full?'go movetime '+lv.mt:'go depth '+lv.depth
+  ], (full?lv.mt:0)+ENGINE_MS, (s)=>{
     const mp=s.match(/multipv (\d+)/), pv=s.match(/ pv (\S+)/), dp=s.match(/depth (\d+)/);
     const cp=s.match(/score cp (-?\d+)/), mt=s.match(/score mate (-?\d+)/);
     if(pv){
