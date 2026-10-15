@@ -6,8 +6,8 @@
 // - Library, engine and font files are versioned on the CDN, so they're served
 //   from the cache once fetched.
 // - chess.com is never cached: your game list always comes fresh.
-const VERSION = "ct-v3";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./icon-halloween-192.png", "./puzzles.json"];
+const VERSION = "ct-v4";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./icon-halloween-192.png", "./icon-thanksgiving-192.png", "./icon-christmas-192.png", "./puzzles.json"];
 const LIBS = [
   "https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.13.4/chess.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.wasm.js",
