@@ -408,6 +408,13 @@ input[type=text]::placeholder{color:var(--muted)}
 .revtext{background:var(--surface);border:2px solid var(--ink);padding:13px 15px;font-size:14px;color:var(--ink-2);margin:10px 0 12px}
 .revtext b.gd{color:var(--good);display:block;margin-bottom:4px}
 .revtext b.bd{color:var(--acc);display:block;margin-bottom:4px}
+/* the card stays light in focus mode, where `.focus b` would turn bold text white */
+.revtext b:not(.gd):not(.bd){color:var(--ink)}
+.whyln{font:13px/1.9 var(--mono);margin-top:10px;padding-top:8px;border-top:1px solid var(--line,#d8d4cc)}
+.whyln .no{color:var(--muted);margin-right:2px}
+.whyln button{background:none;border:0;padding:1px 4px;font:inherit;color:var(--ink-2);cursor:pointer}
+.whyln button.at{background:var(--ink);color:var(--surface)}
+.whyctl{display:flex;gap:6px;margin-top:8px}.whyctl .btn{flex:1}
 .revlist{display:flex;flex-direction:column;gap:0;max-height:280px;overflow:auto;border:2px solid var(--ink);background:var(--surface)}
 .revitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;
  border-bottom:1px solid var(--hair);border-left:5px solid transparent;color:var(--ink-2);font:inherit;font-size:13.5px;padding:9px 10px;cursor:pointer;min-height:42px}
@@ -3271,9 +3278,9 @@ async function reviewGame(){
     const r1=await analyse(fen,DEPTH,PRIO.REVIEW);
     const eb=toCp(r1);
     sim.move(mv.san);
-    let ea, hung=false;
+    let ea, hung=false, r2=null;
     if(sim.game_over()) ea = sim.in_checkmate()?MATECAP:0;
-    else { const r2=await analyse(sim.fen(),DEPTH,PRIO.REVIEW); ea=-toCp(r2);
+    else { r2=await analyse(sim.fen(),DEPTH,PRIO.REVIEW); ea=-toCp(r2);
       try{ const t=new Chess(sim.fen());
            const rm=t.move({from:r2.best.slice(0,2),to:r2.best.slice(2,4),promotion:'q'});
            hung=!!(rm&&rm.captured); }catch(e){} }
@@ -3282,7 +3289,8 @@ async function reviewGame(){
         from:mv.from,to:mv.to,
         forcing:/[x+#=]/.test(mv.san),
         cpLoss:Math.max(0,eb-ea),wl:Math.round(drop*10)/10,tookBack:hung,
-        top:(mv.from+mv.to)===r1.best.slice(0,4)};
+        top:(mv.from+mv.to)===r1.best.slice(0,4),
+        pv:(r1.pv||[]).slice(0,WHYPLIES+4),pvAfter:((r2&&r2.pv)||[]).slice(0,WHYPLIES+3)};
       try{ const t=new Chess(fen); const bm=t.move({from:r1.best.slice(0,2),to:r1.best.slice(2,4),promotion:'q'});
            rec.bestSan=bm?bm.san:r1.best; rec.motif=classify(fen,r1.best); }catch(e){}
       mlog.push(rec); }
@@ -3342,6 +3350,7 @@ function buildReview(mlog,med,hero,url){
         <button class="btn sm sw" data-side="best" style="flex:1">Better move</button>
       </div>
       <div id="revText" class="revtext"></div>
+      <div id="revWhy" style="margin:-4px 0 12px"></div>
       <div class="revlist" id="revList" data-lenis-prevent></div>`
       : `<div class="fb ok"><div class="hd">Nothing worth flagging</div>No move cost you more than a pawn. Clean game.</div>`}
     </div>`;
@@ -3363,11 +3372,12 @@ function buildReview(mlog,med,hero,url){
   $("#revPrev").onclick=()=>{REV.i=(REV.i-1+moments.length)%moments.length;showMoment()};
   $("#revNext").onclick=()=>{REV.i=(REV.i+1)%moments.length;showMoment()};
   $$("#revList .revitem").forEach(b=>b.onclick=()=>{REV.i=+b.dataset.i;showMoment()});
-  $$(".sw").forEach(b=>b.onclick=()=>{REV.side=b.dataset.side;showMoment()});
+  $$(".sw").forEach(b=>b.onclick=()=>{ const open=!!REV.why; REV.side=b.dataset.side; showMoment(); if(open)whyOpen(); });
   showMoment();
 }
 function showMoment(){
   if(!REV||!REV.moments.length)return;
+  whyStop();
   const m=REV.moments[REV.i], n=REV.moments.length; clearUser("gBoard");
   $("#revLbl").textContent=`moment ${REV.i+1} of ${n} — move ${m.n}`;
   const ln=document.getElementById("egselplay"), all=G&&G.mlog;
@@ -3398,6 +3408,109 @@ function showMoment(){
        <b>${bestSan}</b> was the move.<div class="mono" style="margin-top:8px">${mo.tip}</div>`;
   $("#gTitle").textContent=`Reviewing move ${m.n}`;
   $("#lastMv").innerHTML=`<span class="q">${REV.side==="you"?"you played":"engine wanted"}</span> <b>${REV.side==="you"?m.san:bestSan}</b>`;
+  $("#revWhy").innerHTML=`<button class="btn pri" id="whyGo" style="width:100%">${m.kind==="bad"?"Show me why":"Show the line"} ▸</button>`;
+  $("#whyGo").onclick=whyOpen;
+}
+
+/* "Show me why": play the next few moves out on the board — after your move, or
+   after the engine's — so the cost is something you watch happen, not a number.
+   Lines come from the engine's principal variation, kept at review time; a
+   moment without one (timed out) is analysed when you ask. */
+const WHYPLIES=7, WHYMINE="#2fbf2f", WHYTHEIRS="#f0a92a";
+async function whyLine(m,side){
+  const c=m._why||(m._why={}); if(c[side])return c[side];
+  const g=new Chess(m.fen), plies=[];
+  const push=mv=>{ if(mv)plies.push({san:mv.san,from:mv.from,to:mv.to,cap:!!mv.captured,fen:g.fen()}); return mv; };
+  if(side==="you"&&!push(g.move(m.san)))return null;
+  let rest=side==="you"?m.pvAfter:m.pv;
+  if(!g.game_over()&&!(rest&&rest.length>1)) rest=(await analyse(g.fen(),DEPTH,PRIO.REVIEW)).pv||[];
+  for(const u of rest||[]){
+    // stop after WHYPLIES, but never in the middle of a trade
+    if(g.game_over()||(plies.length>=WHYPLIES&&!plies[plies.length-1].cap)||plies.length>=WHYPLIES+4)break;
+    try{ if(!push(uciMove(g,u)))break; }catch(e){ break; }
+  }
+  return c[side]={plies,mate:g.in_checkmate(),mated:g.in_checkmate()?g.turn():null};
+}
+const evStr=c=>Math.abs(c)>=MATECAP?(c>0?"winning":"lost"):((c>0?"+":"")+(c/100).toFixed(1));
+const matFor=(fen,c)=>{ let s=0;
+  for(const ch of fen.split(" ")[0]){ const v=VAL[ch.toLowerCase()]; if(v===undefined)continue;
+    s+=((ch<"a")===(c==="w"))?v:-v; }
+  return s; };
+function whySay(m,W){
+  const {L,side}=W, P=L.plies, n=Math.ceil(P.length/2), hero=REV.hero;
+  const name=`<b>${esc(side==="you"?m.san:P[0].san)}</b>`, mv=`${n} move${n===1?"":"s"}`;
+  const amt=x=>x===1?"a pawn":`${x} pawns' worth of material`;
+  if(L.mate) return L.mated===hero
+    ? `After ${name}, this line ends in checkmate against you.`
+    : `${name} leads to checkmate in ${mv}.`;
+  const d=matFor(P[P.length-1].fen,hero)-matFor(m.fen,hero);
+  if(side==="you"){
+    if(d<0) return `Play it out: ${mv} after ${name}, you're ${amt(-d)} down. That's the mistake.`;
+    if(d>0) return `${name} still wins ${amt(d)} here, but less than the better move did. The cost is in what you left on the table.`;
+    return `No material changes hands in the next ${mv}, so this one is about position. Watch which side gets the centre, the active pieces and the safer king.`;
+  }
+  if(d>0) return `${name} wins ${amt(d)} within ${mv}. That's what you missed.`;
+  if(d<0) return m.eb<=-150
+    ? `Even ${name} loses ${amt(-d)} here. It's the least bad option, not a good one.`
+    : `${name} gives up ${amt(-d)} in this line, and the engine still rates it ${evStr(m.eb)} for you. What you get back is time and activity.`;
+  return `${name} keeps the material level but gets you a better position. Compare where your pieces end up with the line after your move.`;
+}
+async function whyOpen(){
+  if(!REV)return;
+  const at=REV.i, side=REV.side, m=REV.moments[at];
+  $("#revWhy").innerHTML=`<div class="revstat" style="padding:8px 0">Working out the line…</div>`;
+  const L=await whyLine(m,side);
+  if(!REV||REV.i!==at||REV.side!==side||REV.moments[at]!==m)return;   // moved on while it ran
+  if(!L||!L.plies.length){ $("#revWhy").innerHTML=`<div class="revstat" style="padding:8px 0">The engine didn't return a line for this position.</div>`; return; }
+  REV.why={m,side,L,k:0,timer:null};
+  whyDraw(); whyPlay();
+}
+function whyStop(){ if(REV&&REV.why){ clearInterval(REV.why.timer); REV.why=null; } }
+function whyPlay(){
+  const W=REV&&REV.why; if(!W)return;
+  if(W.timer){ clearInterval(W.timer); W.timer=null; whyDraw(); return; }
+  if(W.k>=W.L.plies.length)W.k=0;
+  W.timer=setInterval(()=>{
+    if(!REV||REV.why!==W){ clearInterval(W.timer); return; }
+    if(W.k>=W.L.plies.length){ clearInterval(W.timer); W.timer=null; whyDraw(); return; }
+    W.k++; whyDraw();
+  },1000);
+  whyDraw();
+}
+function whyStep(k){
+  const W=REV&&REV.why; if(!W)return;
+  if(W.timer){ clearInterval(W.timer); W.timer=null; }
+  W.k=Math.max(0,Math.min(W.L.plies.length,k)); whyDraw();
+}
+function whyDraw(){
+  const W=REV.why, {m,L,k,side}=W, P=L.plies, hero=REV.hero, opp=hero==="w"?"b":"w";
+  const fen=k?P[k-1].fen:m.fen, M={}, A=[];
+  // the move just played; before the first step, preview the move the line starts with
+  const cur=k?P[k-1]:P[0], i=k?k-1:0, mine=i%2===0;
+  if(k){ M[cur.from]="lmf"; M[cur.to]="lmt"; }
+  A.push({from:cur.from,to:cur.to,color:i===0&&side==="you"&&m.kind==="bad"?RED:mine?WHYMINE:WHYTHEIRS});
+  renderBoard($("#gBoard"),fen,hero==="b",M,A);
+  $("#lastMv").innerHTML=`<span class="q">${side==="you"?"after your move":"after the better move"} · ${k}/${P.length}</span> <b>${k?esc(cur.san):"—"}</b>`;
+  let num=m.n, ln="";
+  P.forEach((p,j)=>{
+    const col=j%2===0?hero:opp;
+    const no=col==="w"?`<span class="no">${num}.</span>`:j===0?`<span class="no">${num}…</span>`:"";
+    ln+=`<span style="white-space:nowrap">${no}<button data-ply="${j+1}" class="${j+1===k?"at":""}">${esc(p.san)}</button></span> `;
+    if(col==="b")num++;
+  });
+  $("#revWhy").innerHTML=`
+    <div class="revtext" style="margin:0">${whySay(m,W)}<div class="whyln">${ln}</div></div>
+    <div class="whyctl">
+      <button class="btn sm" id="whyBack" aria-label="Previous move">‹</button>
+      <button class="btn sm" id="whyPlay">${W.timer?"Pause":k>=P.length?"Replay":"Play"}</button>
+      <button class="btn sm" id="whyFwd" aria-label="Next move">›</button>
+      <button class="btn sm" id="whyDone">Done</button>
+    </div>`;
+  $$("#revWhy .whyln button").forEach(b=>b.onclick=()=>whyStep(+b.dataset.ply));
+  $("#whyBack").onclick=()=>whyStep(W.k-1);
+  $("#whyFwd").onclick=()=>whyStep(W.k+1);
+  $("#whyPlay").onclick=whyPlay;
+  $("#whyDone").onclick=showMoment;
 }
 
 /* ================= OPENINGS =================
