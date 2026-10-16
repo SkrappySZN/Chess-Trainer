@@ -539,6 +539,8 @@ ul.bul li{margin:7px 0}
 .focus .row{margin-top:22px}
 .focus .btn{border-color:var(--plane)}
 .focus b{color:var(--plane)}
+/* light cards keep dark bold text inside a dark focus panel */
+.focus :is(.fb,.revtext,.card) b:not(.gd):not(.bd){color:var(--ink)}
 .focus .btn:not(.pri){background:transparent;color:var(--plane)}
 .focus .btn:hover:not(:disabled){box-shadow:3px 3px 0 var(--plane)}
 .hl{position:relative;display:inline;background-image:linear-gradient(var(--acc),var(--acc));background-repeat:no-repeat;
@@ -820,14 +822,32 @@ html.nocur,html.nocur *{cursor:none!important}
 .view.focus{padding-top:0}
 .view.focus>.vhead,.view.focus>.subnav{display:none}
 @media(min-width:561px){
-  :is(#v-train,#v-play,#v-open,#v-puz).focus .play>div:first-child{
+  :is(#v-train,#v-play,#v-open,#v-puz,#v-vision).focus .play>div:first-child{
    width:clamp(300px,min(calc(100vh - var(--hdr) - 118px),64vw),940px);
    width:clamp(300px,min(calc(100svh - var(--hdr) - 118px),64vw),940px)}
 }
 @media(min-width:561px) and (max-width:1000px){
-  :is(#v-train,#v-play,#v-open,#v-puz).focus .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 118px)),940px)}
+  :is(#v-train,#v-play,#v-open,#v-puz,#v-vision).focus .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 118px)),940px)}
 }
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
+/* board vision */
+.board.nocoord .coord{display:none}
+.bvq{font:900 clamp(64px,10vw,124px)/.9 var(--display);letter-spacing:-.05em;margin:6px 0 10px;font-variant-numeric:tabular-nums}
+.bvq.san{font-family:var(--mono);font-weight:700;letter-spacing:-.02em}
+.bvline{display:flex;align-items:baseline;gap:14px;font:600 12px var(--mono);text-transform:uppercase;color:var(--muted)}
+.bvline b{font:900 var(--t-3xl)/1 var(--display);letter-spacing:-.045em}
+.bvopts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:var(--sp-4)}
+.bvopts .btn{min-height:64px;font:700 26px var(--mono);text-transform:none}
+.bvtyped{font:600 13px var(--mono);color:var(--muted);margin-top:10px;min-height:1.4em}
+.bvmodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:var(--sp-4)}
+.bvmodes .btn.opt{width:100%;min-width:0;text-align:left}
+.bvheat{display:grid;grid-template-columns:repeat(8,1fr);border:2px solid var(--ink);max-width:320px;aspect-ratio:1;margin-top:var(--sp-3)}
+.bvheat span{display:flex;align-items:center;justify-content:center;font:600 10px var(--mono);color:var(--ink);position:relative}
+.bvheat span.l{background:var(--surface-2)}.bvheat span.d{background:var(--surface-3)}
+.bvheat span i{position:absolute;inset:0;background:var(--acc)}
+.bvheat span em{position:relative;font-style:normal}
+.bvkey{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:14px;margin-top:var(--sp-3)}
+.bvkey code{font:700 14px var(--mono)}
 .tabbar{display:none}
 .qctx{display:none}
 .tgls{display:flex;flex-direction:column;gap:10px}
@@ -998,6 +1018,7 @@ html.nocur,html.nocur *{cursor:none!important}
 <!-- ================= TRAIN ================= -->
 <div class="view" id="v-train">
   <header class="vhead sm"><div><div class="eyebrow">Positions from your own games</div><h1>Train<i>.</i></h1></div></header>
+  <div class="subnav"><button class="btn sm sub on" data-go="train">Your positions</button><button class="btn sm sub" data-go="vision">Board vision</button></div>
   <div class="focusbar" id="focusBar" style="display:none"></div>
   <div id="noDrills" class="card empty">
     No drills yet. Open <b>Account</b> and hit <b>Analyse my full history</b> — it pulls your chess.com games
@@ -1039,6 +1060,26 @@ html.nocur,html.nocur *{cursor:none!important}
           </ol>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BOARD VISION ================= -->
+<div class="view" id="v-vision">
+  <header class="vhead sm"><div><div class="eyebrow">Squares and notation</div><h1>Board vision<i>.</i></h1></div></header>
+  <div class="subnav"><button class="btn sm sub" data-go="train">Your positions</button><button class="btn sm sub on" data-go="vision">Board vision</button></div>
+  <div id="bvIdle"></div>
+  <div id="bvRun" style="display:none">
+    <div class="play">
+      <div>
+        <div class="qbar">
+          <span class="row" style="gap:8px"><span class="pill pos" id="bvTag">—</span><span class="turnchip" id="bvTurn"></span></span>
+          <span class="timer" id="bvClock"></span>
+        </div>
+        <div class="board" id="bvBoard"></div>
+        <div class="row" style="margin-top:22px"><button class="btn" id="bvStop">Stop</button></div>
+      </div>
+      <div id="bvPanel"></div>
     </div>
   </div>
 </div>
@@ -1227,9 +1268,9 @@ html.nocur,html.nocur *{cursor:none!important}
           <div id="opWhy"></div>
           <div id="opBranch"></div>
           <div class="row opctl">
-            <button class="btn pri" id="opNext" style="display:none">Continue →</button>
+            <button class="btn pri" id="opNext" data-key="next" style="display:none">Continue →</button>
             <button class="btn" id="opShow">Show me</button>
-            <button class="btn" id="opBack">‹ Back</button>
+            <button class="btn" id="opBack" data-key="prev">‹ Back</button>
             <button class="btn" id="opRestart">Restart line</button>
           </div>
           <div class="mono" id="opMoves" data-lenis-prevent style="max-height:150px;overflow:auto;line-height:1.9"></div>
@@ -2562,8 +2603,8 @@ function renderLine(){
   box.innerHTML=`<div class="lchips">${chips.join("")}</div>
     <div class="lnote">${LINE.i?LINE.notes[LINE.i-1]:"The position you were given. Step through to see where the move leads."}</div>
     <div class="lnav">
-      <button class="btn" id="lprev" ${LINE.i?"":"disabled"}>‹</button>
-      <button class="btn" id="lnext" ${LINE.i<LINE.sans.length?"":"disabled"}>${LINE.i?"›":"Play it out ›"}</button>
+      <button class="btn" id="lprev" data-key="prev" ${LINE.i?"":"disabled"}>‹</button>
+      <button class="btn" id="lnext" data-key="next" ${LINE.i<LINE.sans.length?"":"disabled"}>${LINE.i?"›":"Play it out ›"}</button>
       <button class="btn" id="lreset" ${LINE.i?"":"disabled"}>Back to start</button>
     </div>`;
   $$("#lineplay [data-ply]").forEach(b=>b.onclick=()=>stepLine(+b.dataset.ply));
@@ -3341,9 +3382,9 @@ function buildReview(mlog,med,hero,url){
       ${url&&gameDrills(url).length?`<button class="btn pri" id="revPuz" style="width:100%;margin-bottom:12px">Turn ${gameDrills(url).length} mistake${gameDrills(url).length===1?"":"s"} into puzzles →</button>`:""}
       ${moments.length?`
       <div class="revnav">
-        <button class="btn sm" id="revPrev">‹</button>
+        <button class="btn sm" id="revPrev" data-key="prev" aria-label="Previous moment">‹</button>
         <span id="revLbl" class="revlbl"></span>
-        <button class="btn sm" id="revNext">›</button>
+        <button class="btn sm" id="revNext" data-key="next" aria-label="Next moment">›</button>
       </div>
       <div class="row" style="gap:6px;margin:8px 0 4px">
         <button class="btn sm sw on" data-side="you" style="flex:1">What you played</button>
@@ -3501,9 +3542,9 @@ function whyDraw(){
   $("#revWhy").innerHTML=`
     <div class="revtext" style="margin:0">${whySay(m,W)}<div class="whyln">${ln}</div></div>
     <div class="whyctl">
-      <button class="btn sm" id="whyBack" aria-label="Previous move">‹</button>
+      <button class="btn sm" id="whyBack" data-key="prev" data-key-prio="2" aria-label="Previous move">‹</button>
       <button class="btn sm" id="whyPlay">${W.timer?"Pause":k>=P.length?"Replay":"Play"}</button>
-      <button class="btn sm" id="whyFwd" aria-label="Next move">›</button>
+      <button class="btn sm" id="whyFwd" data-key="next" data-key-prio="2" aria-label="Next move">›</button>
       <button class="btn sm" id="whyDone">Done</button>
     </div>`;
   $$("#revWhy .whyln button").forEach(b=>b.onclick=()=>whyStep(+b.dataset.ply));
@@ -4550,8 +4591,8 @@ function rvSelect(gi,i){
     ${spent?`<p style="font:12.5px var(--mono);color:var(--muted)">you spent ${spent} on it</p>`:""}
     ${(t==="blunder"||t==="mistake")?`<p style="font-size:13.5px;color:var(--muted)">${mo.tip}</p>`:""}
     <div class="row" style="margin-top:12px">
-      <button class="btn sm" data-step="-1" aria-label="Previous move">‹</button>
-      <button class="btn sm" data-step="1" aria-label="Next move">›</button>
+      <button class="btn sm" data-step="-1" data-key="prev" aria-label="Previous move">‹</button>
+      <button class="btn sm" data-step="1" data-key="next" aria-label="Next move">›</button>
       <button class="btn sm" data-jump="1">Next mistake</button>
       ${d?`<button class="btn sm pri dl" data-id="${esc(d.id)}">Drill this</button>`:""}
     </div>`;
@@ -5361,6 +5402,279 @@ function renderSoon(){
   lastRender=now; renderAll();
 }
 
+/* ---------- board vision ----------
+   Learning the board's coordinates and reading notation, in 30-second rounds:
+   tap the square you're told, name the square that lights up, play the move
+   that's written down. Squares you miss or are slow on come round more often.
+   They're tracked separately for each side of the board, because knowing e5
+   from White's side says little about finding it from Black's. */
+const BVMODES={
+  find:{name:"Find the square",sub:"A square is named. Tap it."},
+  name:{name:"Name the square",sub:"A square lights up. Pick its name, or type it."},
+  move:{name:"Make the move",sub:"A move is written in notation. Play it on the board."}};
+const BVSECS=30, BVEMPTY="8/8/8/8/8/8/8/8 w - - 0 1";
+const SQS=[...Array(64)].map((_,i)=>FILES[i%8]+(1+(i>>3)));
+let BV=null, BVDONE=null, BVPOS=null, bvSel=null;
+function bvStore(){
+  const S=DB.bv||(DB.bv={best:{},sq:{w:{},b:{}},runs:[],opt:{side:"w",coords:true}});
+  return S;
+}
+// how much a square deserves another look: unseen ones are worth one, missed
+// and slow ones more
+function bvWeight(st){
+  if(!st||!st.n)return 2;
+  return .4+3*(st.miss/st.n)+Math.min(3,(st.ms/st.n)/1500);
+}
+function bvWeighted(items,w){
+  let r=Math.random()*w.reduce((a,b)=>a+b,0);
+  for(let i=0;i<items.length;i++){ r-=w[i]; if(r<=0)return items[i]; }
+  return items[items.length-1];
+}
+function bvPickSq(side,avoid){
+  const S=bvStore().sq[side], pool=SQS.filter(q=>q!==avoid);
+  return bvWeighted(pool,pool.map(q=>bvWeight(S[q])));
+}
+function bvNote(sq,ok,ms){
+  const S=bvStore().sq[BV.side], st=S[sq]||(S[sq]={n:0,miss:0,ms:0});
+  st.n++; if(!ok)st.miss++; st.ms+=Math.min(ms,8000);
+  // only the last twenty or so tries count, so a square you've since learned stops being flagged
+  if(st.n>20){ const k=20/st.n; st.n=20; st.miss*=k; st.ms*=k; }
+}
+// the four names offered for a square: the right one and the ones it's most
+// often mistaken for — the same square seen from the other side, and its neighbours
+function bvChoices(sq){
+  const f=FILES.indexOf(sq[0]), r=+sq[1], c=new Set();
+  const add=(ff,rr)=>{ if(ff>=0&&ff<8&&rr>=1&&rr<=8){ const q=FILES[ff]+rr; if(q!==sq)c.add(q); } };
+  add(7-f,9-r); add(f,9-r); add(7-f,r);
+  [[1,0],[-1,0],[0,1],[0,-1]].sort(()=>Math.random()-.5).forEach(([a,b])=>add(f+a,r+b));
+  const pick=[...c].sort(()=>Math.random()-.5).slice(0,3);
+  return [sq,...pick].sort(()=>Math.random()-.5);
+}
+// positions for "make the move": your own games first, then puzzles, and if
+// neither is around, games made up of random moves
+async function bvPositions(){
+  if(BVPOS&&BVPOS.length)return BVPOS;
+  const mine=[]; Object.values(DB.games||{}).forEach(g=>(g.mlog||[]).forEach(m=>{ if(m.fen)mine.push(m.fen) }));
+  let pz=[]; try{ pz=(await pzLoad()).map(p=>p.fen); }catch(e){}
+  BVPOS=mine.concat(pz);
+  if(!BVPOS.length)for(let i=0;i<200;i++){
+    const g=new Chess(), n=8+Math.floor(Math.random()*30);
+    for(let k=0;k<n&&!g.game_over();k++){ const ms=g.moves(); g.move(ms[Math.floor(Math.random()*ms.length)]); }
+    if(!g.game_over())BVPOS.push(g.fen());
+  }
+  return BVPOS;
+}
+// a move worth reading: captures, checks, castling, promotions and moves that
+// need their file or rank spelled out come up more than plain pawn pushes
+function bvPickMove(fen){
+  const g=new Chess(fen), ms=g.moves({verbose:true}).filter(m=>!m.promotion||m.promotion==="q");
+  if(!ms.length)return null;
+  return bvWeighted(ms,ms.map(m=>{ let x=m.piece==="p"&&!m.captured?.5:1;
+    if(m.captured)x+=1.5; if(/[+#]/.test(m.san))x+=1.5; if(/^O-O/.test(m.san))x+=4; if(m.promotion)x+=3;
+    if(/^[NBRQK][a-h1-8]x?[a-h][1-8]/.test(m.san))x+=4;
+    return x; }));
+}
+function bvSideFor(){ const o=bvStore().opt.side; return o==="r"?(Math.random()<.5?"w":"b"):o; }
+
+async function bvStart(mode){
+  const S=bvStore();
+  if(mode==="move")await bvPositions();
+  BVDONE=null;
+  BV={mode,side:bvSideFor(),score:0,miss:0,end:Date.now()+BVSECS*1000,q:null,qt:0,lock:false,buf:"",res:[],ms:0};
+  $("#bvIdle").style.display="none"; $("#bvRun").style.display="block";
+  $("#bvBoard").classList.toggle("nocoord",!S.opt.coords);
+  $("#bvTag").textContent=BVMODES[mode].name;
+  boardFocus("vision",true);
+  clearInterval(bvStart.t);
+  bvStart.t=setInterval(()=>{
+    if(!BV){ clearInterval(bvStart.t); return; }
+    const left=Math.max(0,Math.ceil((BV.end-Date.now())/1000));
+    $("#bvClock").textContent=left+"s";
+    if(left<=0&&!BV.lock)bvFinish();
+  },200);
+  bvNext();
+}
+function bvNext(){
+  if(!BV)return;
+  if(Date.now()>=BV.end)return bvFinish();
+  const prev=BV.q&&BV.q.sq;
+  BV.lock=false; BV.buf=""; bvSel=null; BV.qt=Date.now();
+  if(BV.mode==="move"){
+    let fen, mv;
+    for(let i=0;i<20&&!mv;i++){ fen=BVPOS[Math.floor(Math.random()*BVPOS.length)]; mv=bvPickMove(fen); }
+    BV.q={fen,mv};
+  } else {
+    const sq=bvPickSq(BV.side,prev);
+    BV.q={sq,opts:BV.mode==="name"?bvChoices(sq):null};
+  }
+  bvDraw(); bvPanel();
+}
+function bvDraw(marks={},arrows=null){
+  if(!BV)return;
+  const q=BV.q, M=Object.assign({},marks);
+  if(BV.mode==="name"&&!Object.keys(marks).length)M[q.sq]="sel";
+  if(BV.mode==="move"&&bvSel&&!Object.keys(marks).length){
+    M[bvSel]="sel"; new Chess(q.fen).moves({verbose:true}).forEach(m=>{ if(m.from===bvSel&&!M[m.to])M[m.to]="dotm"; });
+  }
+  renderBoard($("#bvBoard"),BV.mode==="move"?q.fen:BVEMPTY,BV.side==="b",M,arrows);
+}
+function bvPanel(fb){
+  const q=BV.q, turn=BV.mode==="move"?turnOf(q.fen):BV.side;
+  $("#bvTurn").innerHTML=BV.mode==="move"
+    ?`<span class="dot2" style="background:${turn==="w"?'#fbfbf8':'#17171a'}"></span>${turn==="w"?"White":"Black"} to play`
+    :`<span class="dot2" style="background:${BV.side==="w"?'#fbfbf8':'#17171a'}"></span>From ${BV.side==="w"?"White":"Black"}'s side`;
+  const line=`<div class="bvline"><b>${BV.score}</b> right${BV.miss?` · ${BV.miss} missed`:""}</div>`;
+  let body;
+  if(BV.mode==="find") body=`<p style="margin:0">Tap this square:</p><div class="bvq">${q.sq}</div>`;
+  else if(BV.mode==="name") body=`<p style="margin:0">Which square is lit up?</p>
+    <div class="bvopts">${q.opts.map(o=>`<button class="btn" data-bvo="${o}">${o}</button>`).join("")}</div>
+    <div class="bvtyped">${BV.buf?`typed: ${BV.buf}_`:"or type it, like e4"}</div>`;
+  else body=`<p style="margin:0">${turnOf(q.fen)==="w"?"White":"Black"} plays:</p><div class="bvq san">${esc(q.mv.san)}</div>
+    <p style="font-size:14px;margin:0">${bvExplain(q.mv)}</p>`;
+  $("#bvPanel").innerHTML=line+body+(fb||"");
+  $$("#bvPanel [data-bvo]").forEach(b=>b.onclick=()=>bvName(b.dataset.bvo));
+}
+const BVPIECE={p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen",k:"king"};
+// the move in words, so the notation teaches itself as you go
+function bvExplain(m){
+  if(/^O-O-O/.test(m.san))return "Castle queenside: the king goes two squares toward the a-file.";
+  if(/^O-O/.test(m.san))return "Castle kingside: the king goes two squares toward the h-file.";
+  let t=`${m.piece==="p"?"A pawn":"The "+BVPIECE[m.piece]}`;
+  if(m.piece==="p"&&m.captured)t=`The ${m.from[0]}-pawn`;
+  else if(/^[NBRQK][a-h1-8]x?[a-h][1-8]/.test(m.san))t+=` on the ${/^[NBRQK][a-h]/.test(m.san)?m.san[1]+"-file":"rank "+m.san[1]}`;
+  t+=m.captured?` takes on ${m.to}`:` goes to ${m.to}`;
+  if(m.promotion)t+=" and becomes a queen";
+  if(/#$/.test(m.san))t+=", checkmate"; else if(/\+$/.test(m.san))t+=", with check";
+  return "<b>"+t+".</b>";
+}
+function bvResult(ok,sq,marks,arrows,note){
+  const ms=Date.now()-BV.qt;
+  BV.lock=true; BV.ms+=ms;
+  if(ok){ BV.score++; FX.good&&FX.good(); } else { BV.miss++; FX.bad&&FX.bad(); }
+  if(sq&&BV.mode!=="move")bvNote(sq,ok,ms);
+  BV.res.push({q:BV.mode==="move"?BV.q.mv.san:sq,ok,ms});
+  bvDraw(marks,arrows);
+  if(!ok)bvPanel(`<div class="fb bad" style="margin-top:14px"><div class="hd">Missed</div>${note}</div>`);
+  setTimeout(()=>{ if(BV)bvNext(); },ok?350:1300);
+}
+function bvTap(n){
+  if(!BV||BV.lock)return;
+  if(BV.mode==="find"){
+    const q=BV.q.sq, ok=n===q;
+    return bvResult(ok,q,ok?{[q]:"ok"}:{[n]:"bad",[q]:"ok"},null,`That was <b>${n}</b>. <b>${q}</b> is the green one.`);
+  }
+  if(BV.mode!=="move")return;
+  const g=new Chess(BV.q.fen);
+  if(bvSel){
+    const legal=g.moves({verbose:true}).some(m=>m.from===bvSel&&m.to===n);
+    if(legal){ const f=bvSel; bvSel=null; return bvMove(f,n); }
+  }
+  bvSel=g.moves({verbose:true}).some(m=>m.from===n)?n:null; bvDraw();
+}
+function bvMove(f,t){
+  const m=BV.q.mv, ok=m.from===f&&m.to===t;
+  let played=""; try{ const x=new Chess(BV.q.fen).move({from:f,to:t,promotion:"q"}); if(x)played=x.san; }catch(e){}
+  bvResult(ok,null,ok?{[f]:"ok",[t]:"ok"}:{[f]:"bad",[t]:"bad",[m.from]:"ok",[m.to]:"ok"},
+    ok?null:[{from:f,to:t,color:RED},{from:m.from,to:m.to,color:GREEN}],
+    `You played <b>${esc(played||f+"-"+t)}</b>. <b>${esc(m.san)}</b> is the green arrow.`);
+}
+function bvName(a){
+  if(!BV||BV.lock||BV.mode!=="name")return;
+  const q=BV.q.sq, ok=a===q;
+  bvResult(ok,q,ok?{[q]:"ok"}:{[q]:"bad"},null,`You said <b>${a}</b>. It was <b>${q}</b>.`);
+  $$("#bvPanel [data-bvo]").forEach(b=>{ b.disabled=true;
+    if(b.dataset.bvo===q)b.style.cssText="background:var(--good);color:#fff";
+    else if(b.dataset.bvo===a)b.style.cssText="background:var(--acc);color:#fff"; });
+}
+function bvFinish(){
+  if(!BV)return;
+  clearInterval(bvStart.t);
+  const S=bvStore(), B=BV, key=B.mode, prev=S.best[key]||0;
+  if(B.score>prev)S.best[key]=B.score;
+  S.runs.push({m:key,side:B.side,score:B.score,miss:B.miss,ms:B.res.length?Math.round(B.ms/B.res.length):0,ts:Date.now()});
+  if(S.runs.length>300)S.runs=S.runs.slice(-300);
+  save();
+  BVDONE={mode:key,side:B.side,score:B.score,miss:B.miss,prev,res:B.res,avg:B.res.length?B.ms/B.res.length:0};
+  BV=null; bvSel=null; $("#bvClock").textContent="";
+  boardFocus("vision",false);
+  $("#bvRun").style.display="none"; $("#bvIdle").style.display="block";
+  renderVision();
+}
+function bvQuit(){ if(!BV)return; BV.end=0; bvFinish(); }
+function renderVision(){
+  if(BV)return;
+  const S=bvStore(), o=S.opt, side=o.side==="r"?"w":o.side, st=S.sq[side];
+  const seen=SQS.filter(q=>st[q]&&st[q].n), worst=seen.slice().sort((a,b)=>bvWeight(st[b])-bvWeight(st[a])).slice(0,6);
+  const top=Math.max(1,...seen.map(q=>bvWeight(st[q])));
+  const rows=[]; for(let r=8;r>=1;r--)for(let f=0;f<8;f++)rows.push(FILES[f]+r);
+  const heat=(side==="b"?rows.slice().reverse():rows).map(q=>{ const f=FILES.indexOf(q[0]), dark=(f+ +q[1])%2===1;
+    const a=st[q]&&st[q].n?Math.max(0,(bvWeight(st[q])-.4)/(top-.4))*.85:0;
+    return `<span class="${dark?"d":"l"}" title="${q}${st[q]&&st[q].n?` · ${Math.round(100*st[q].miss/st[q].n)}% missed, ${(st[q].ms/st[q].n/1000).toFixed(1)}s`:""}"><i style="opacity:${a.toFixed(2)}"></i><em>${q}</em></span>`; }).join("");
+  const D=BVDONE;
+  const seg=(k,v,label)=>`<button aria-pressed="${o[k]===v}" data-bvk="${k}" data-bvv="${v}">${label}</button>`;
+  $("#bvIdle").innerHTML=`
+    ${D?`<div class="card" style="margin-bottom:var(--sp-5)">
+      <h3>${esc(BVMODES[D.mode].name)} · from ${D.side==="w"?"White":"Black"}'s side</h3>
+      <div class="pzbig">${D.score}</div>
+      <p style="font-size:15px">${D.score>D.prev?(D.prev?`New best, up from ${D.prev}.`:"Your first score on the board.")
+        :`Your best is ${D.prev}.`} ${D.res.length?`${(D.avg/1000).toFixed(1)}s per answer${D.miss?`, ${D.miss} missed`:""}.`:""}</p>
+      ${D.res.length?`<div class="pzres">${D.res.map(x=>`<span class="${x.ok?"y":"n"}">${x.ok?"✓":"✕"} ${esc(x.q)}</span>`).join("")}</div>`:""}
+      <div class="row" style="margin-top:var(--sp-4)"><button class="btn pri" data-bvgo="${D.mode}">Go again</button></div>
+    </div>`:""}
+    <div class="card">
+      <h3>Learn the board</h3>
+      <p style="font-size:14px">Thirty seconds a round. Squares you miss or hesitate on come up more often until you've got them.</p>
+      <div class="row" style="gap:18px;flex-wrap:wrap;margin-top:var(--sp-3)">
+        <div><div class="k" style="font:600 11px var(--mono);text-transform:uppercase;color:var(--muted);margin-bottom:6px">Board from</div>
+          <div class="seg" role="group" aria-label="Board side">${seg("side","w","White")}${seg("side","b","Black")}${seg("side","r","Random")}</div></div>
+        <div><div class="k" style="font:600 11px var(--mono);text-transform:uppercase;color:var(--muted);margin-bottom:6px">Coordinates</div>
+          <div class="seg" role="group" aria-label="Coordinates">${seg("coords",true,"Shown")}${seg("coords",false,"Hidden")}</div></div>
+      </div>
+      <div class="bvmodes">
+        ${Object.entries(BVMODES).map(([k,v])=>`<button class="btn opt" data-bvgo="${k}">${esc(v.name)}<br><small>${esc(v.sub)}${S.best[k]?` Best: ${S.best[k]}.`:""}</small></button>`).join("")}
+      </div>
+    </div>
+    <div class="card" style="margin-top:var(--sp-5)">
+      <h3>Where you're slow · ${side==="w"?"White":"Black"}'s side</h3>
+      ${seen.length>=10?`<p style="font-size:14px">The darker the square, the more often you miss it or the longer it takes you.${worst.length?` Work on <b>${worst.join(", ")}</b>.`:""}</p>
+        <div class="bvheat">${heat}</div>`
+      :`<p style="font-size:14px">Play a few rounds of Find the square or Name the square and this fills in with the squares that trip you up.</p>`}
+    </div>
+    <div class="card" style="margin-top:var(--sp-5)">
+      <h3>Reading notation</h3>
+      <div class="bvkey">
+        <code>e4</code><span>Every square is a file (a–h, left to right from White) then a rank (1–8, from White's side up).</span>
+        <code>K Q R B N</code><span>King, queen, rook, bishop, knight. A knight is N because K is taken.</span>
+        <code>e5</code><span>No letter means a pawn.</span>
+        <code>Nxe5</code><span><b>x</b> means takes. A pawn capture names the file it came from: <code>dxe5</code>.</span>
+        <code>Nbd2</code><span>Two knights could go to d2, so the extra <b>b</b> says it's the one on the b-file.</span>
+        <code>Qh5+</code><span><b>+</b> is check, <b>#</b> is checkmate.</span>
+        <code>O-O</code><span>Castling kingside. <code>O-O-O</code> is queenside.</span>
+        <code>e8=Q</code><span>A pawn promotes to a queen.</span>
+      </div>
+    </div>`;
+  $$("#bvIdle [data-bvgo]").forEach(b=>b.onclick=()=>bvStart(b.dataset.bvgo));
+  $$("#bvIdle [data-bvk]").forEach(b=>b.onclick=()=>{
+    o[b.dataset.bvk]=b.dataset.bvk==="coords"?b.dataset.bvv==="true":b.dataset.bvv; save(); renderVision(); });
+}
+$("#bvStop").onclick=bvQuit;
+document.addEventListener("keydown",e=>{
+  if(!BV||BV.lock||BV.mode!=="name"||VIEW!=="vision"||e.altKey||e.ctrlKey||e.metaKey)return;
+  const k=e.key.toLowerCase();
+  if(/^[a-h]$/.test(k)){ BV.buf=k; bvPanel(); e.preventDefault(); }
+  else if(/^[1-8]$/.test(k)&&BV.buf){ const a=BV.buf+k; BV.buf=""; bvName(a); e.preventDefault(); }
+  else if(k==="backspace"&&BV.buf){ BV.buf=""; bvPanel(); e.preventDefault(); }
+});
+wireBoardInput($("#bvBoard"),{
+  enabled:()=>!!BV&&!BV.lock&&BV.mode!=="name",
+  click:bvTap,
+  selected:()=>bvSel,
+  legal:(f,t)=>{ try{ return !!BV&&BV.mode==="move"&&new Chess(BV.q.fen).moves({verbose:true}).some(m=>m.from===f&&m.to===t) }catch(e){ return false } },
+  commit:(f,t)=>{ bvSel=null; bvMove(f,t); },
+  cancel:()=>{ bvSel=null; bvDraw(); },
+  redraw:()=>bvDraw()
+});
+
 /* ---------- puzzles ----------
    A few thousand of the best-rated puzzles from Lichess's puzzle database (CC0),
    bundled in puzzles.json so they work offline. Every puzzle starts one move early:
@@ -5689,8 +6003,8 @@ function boardFocus(v,on){
   el.classList.toggle("focus",!!on);
   if(on&&el.classList.contains("on"))try{ toTop() }catch(e){}
 }
-const NAVOF={coach:"coach",train:"train",puz:"puz",play:"play",open:"open",weak:"insights",prog:"insights",games:"games"};
-const VIEWNAME={coach:"Today",train:"Train",puz:"Puzzles",play:"Play",open:"Openings",weak:"Insights",prog:"Insights",games:"Games"};
+const NAVOF={coach:"coach",train:"train",vision:"train",puz:"puz",play:"play",open:"open",weak:"insights",prog:"insights",games:"games"};
+const VIEWNAME={coach:"Today",train:"Train",vision:"Board vision",puz:"Puzzles",play:"Play",open:"Openings",weak:"Insights",prog:"Insights",games:"Games"};
 let VIEW="coach", WIPE=0;
 const motionOK=()=>!(REDUCED&&REDUCED.matches);
 function showView(v){
@@ -5708,6 +6022,7 @@ function showView(v){
   if(v==="coach")renderCoach();
   if(v==="open")renderExplorer();
   if(v==="puz")renderPuz();
+  if(v==="vision")renderVision();
   M.entered=Date.now();
   if(M.on){ motionScan(true); } else enterCounts($("#v-"+v));
 }
@@ -5760,6 +6075,23 @@ $("#menuBtn").onclick=()=>setMenu(!MENU);
 $("#acctBtn").onclick=()=>setDrawer(!DRAWER);
 $("#drawerX").onclick=()=>setDrawer(false);
 $("#scrim").onclick=()=>setDrawer(false);
+/* ← and → step through whatever is stepping on screen: a review, a line, a game.
+   Controls opt in with data-key="prev"/"next". When more than one stepper is
+   showing, the higher data-key-prio wins (an open line inside a review beats the
+   review's own moments), then the one nearest the middle of the screen. */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;
+  if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey||MENU||DRAWER)return;
+  if(e.target&&e.target.closest&&e.target.closest("input,textarea,select,[contenteditable]"))return;
+  const view=$(".view.on"); if(!view)return;
+  const want=e.key==="ArrowLeft"?"prev":"next", mid=innerHeight/2;
+  const all=[...view.querySelectorAll(`[data-key="${want}"]`)].filter(b=>b.offsetParent!==null);
+  if(!all.length)return;
+  const prio=b=>+(b.dataset.keyPrio||0), dist=b=>{ const r=b.getBoundingClientRect(); return Math.abs((r.top+r.bottom)/2-mid); };
+  all.sort((a,b)=>prio(b)-prio(a)||dist(a)-dist(b));
+  e.preventDefault();
+  if(!all[0].disabled)all[0].click();
+});
 document.addEventListener("keydown",e=>{
   if(e.key!=="Escape")return;
   if(MENU){ setMenu(false); $("#menuBtn").focus(); }
