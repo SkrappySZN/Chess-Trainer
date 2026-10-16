@@ -820,7 +820,11 @@ html.nocur,html.nocur *{cursor:none!important}
 /* Focus mode: while a board is in use (a drill, a game, a line, a puzzle) the page
    heading and its tabs go, and the board takes the height they used. */
 .view.focus{padding-top:0}
-.view.focus>.vhead,.view.focus>.subnav{display:none}
+.view.focus>.vhead,.view.focus>.subnav:not(.keep){display:none}
+/* Train opens straight into a drill, so its switch to Board vision has to survive focus mode */
+.view.focus>.subnav.keep{margin-top:var(--sp-4);margin-bottom:var(--sp-4);background:transparent;border-color:var(--plane)}
+.view.focus>.subnav.keep .btn{background:transparent;color:var(--plane);border-color:var(--plane)}
+.view.focus>.subnav.keep .btn.on{background:var(--plane);color:var(--ink)}
 @media(min-width:561px){
   :is(#v-train,#v-play,#v-open,#v-puz,#v-vision).focus .play>div:first-child{
    width:clamp(300px,min(calc(100vh - var(--hdr) - 118px),64vw),940px);
@@ -1018,7 +1022,7 @@ html.nocur,html.nocur *{cursor:none!important}
 <!-- ================= TRAIN ================= -->
 <div class="view" id="v-train">
   <header class="vhead sm"><div><div class="eyebrow">Positions from your own games</div><h1>Train<i>.</i></h1></div></header>
-  <div class="subnav"><button class="btn sm sub on" data-go="train">Your positions</button><button class="btn sm sub" data-go="vision">Board vision</button></div>
+  <div class="subnav keep"><button class="btn sm sub on" data-go="train">Your positions</button><button class="btn sm sub" data-go="vision">Board vision</button></div>
   <div class="focusbar" id="focusBar" style="display:none"></div>
   <div id="noDrills" class="card empty">
     No drills yet. Open <b>Account</b> and hit <b>Analyse my full history</b> — it pulls your chess.com games
