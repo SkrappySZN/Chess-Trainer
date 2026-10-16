@@ -5366,17 +5366,21 @@ function pzScore(ok){
   if(P.mode!=="rush")S.seen[P.p.id]=1;
   if(P.mode==="rated"){
     const K=S.n<20?40:S.n<60?24:16, E=1/(1+Math.pow(10,(P.p.r-S.rating)/400));
-    d=Math.round(K*((ok?1:0)-E)); if(ok&&d<1)d=1; if(!ok&&d>-1)d=-1;
+    // a miss costs less the further into the line it comes: finding 2 of 3 moves
+    // before going wrong (or asking for help) loses a third of what missing the first would
+    const mine=Math.max(1,Math.floor(P.p.line.length/2)), found=Math.max(0,(P.i-1)>>1);
+    d=Math.round(ok?K*(1-E):-K*E*(1-found/mine)); if(ok&&d<1)d=1; if(!ok&&d>-1)d=-1;
     S.rating=Math.max(100,S.rating+d); S.n++;
   }
   S.log.push({id:P.p.id,r:P.p.r,ok,m:P.mode,d,ra:S.rating,secs:Math.round((Date.now()-(P.t0||Date.now()))/1000),ts:Date.now()});
   if(S.log.length>600)S.log=S.log.slice(-600);
-  save(); return d;
+  P.d=d; save(); return d;
 }
 function pzSolved(){
   const P=PZ; P.done=true; P.busy=true; FX.good();
   if(RU){ pzDraw(); return rushHit(); }
-  const d=pzScore(true), secs=Math.round((Date.now()-P.t0)/1000);
+  // after a miss this shows what the miss cost, so a loss doesn't vanish when you finish the line
+  const d=P.scored?P.d:pzScore(true), secs=Math.round((Date.now()-P.t0)/1000);
   pzDraw();
   $("#pzFb").innerHTML=`<div class="fb ${P.failed?"bad":"ok"}">
     <div class="hd">${P.failed?"Solved, after a miss":"Solved"}${pzDelta(d)}</div>
@@ -5397,7 +5401,7 @@ function pzHint(){
 }
 function pzSolution(){
   const P=PZ; if(!P||P.busy||P.done)return;
-  const d=P.scored?0:pzScore(false); P.failed=true; P.busy=true; P.done=true;
+  const d=P.scored?P.d:pzScore(false); P.failed=true; P.busy=true; P.done=true;
   $("#pzHint").disabled=$("#pzShow").disabled=true;
   const step=()=>{
     if(PZ!==P)return;
@@ -5492,7 +5496,8 @@ function renderPuz(){
       <div class="card">
         <h3>Rated puzzles</h3>
         <p style="font-size:14px">Puzzles are picked close to your rating. Solve one and your rating goes up; a wrong
-        move, a hint or the solution brings it down — by more when the puzzle was easy for you. Only the first try counts.</p>
+        move, a hint or the solution brings it down — by more when the puzzle was easy for you, and by less the further
+        into the line you got. Only the first try counts.</p>
         <button class="btn pri" id="pzGo">${rated.length?"Keep solving":"Start solving"}</button>
         ${pzSpark(rated.slice(-80))}
         ${rated.length?`<div class="pzres">${rated.slice(-20).reverse().map(x=>`<span class="${x.ok?"y":"n"}" title="Puzzle rated ${x.r}">${x.ok?"✓":"✕"} ${x.r}</span>`).join("")}</div>`:""}
