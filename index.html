@@ -369,6 +369,21 @@ td{color:var(--ink-2)}td:first-child{color:var(--ink);font-weight:600}
 .endrow .stack i:nth-child(2){opacity:.75}.endrow .stack i:nth-child(3){opacity:.58}.endrow .stack i:nth-child(4){opacity:.42}
 .endrow .stack i.unk{background:var(--surface-2);color:var(--muted);opacity:1;border:1.5px dashed var(--hair)}
 .endrow .ek{grid-column:2;color:var(--muted);font-size:12.5px}
+.bottbl td,.bottbl th{white-space:nowrap}.bottbl td:not(:first-child),.bottbl th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.bottbl tr.ref td{border-top:2px solid var(--ink);font-weight:700;color:var(--ink)}
+.botlist{display:grid;gap:0;margin-bottom:var(--sp-4)}
+.botrow{display:grid;grid-template-columns:60px minmax(110px,1fr) 52px minmax(150px,1.2fr) 136px 118px;gap:12px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--hair);font-size:13.5px}
+.botrow .bd{color:var(--muted);font:12.5px var(--mono)}
+.botrow .bn{font-weight:700;color:var(--ink)}.botrow .bn i{font-style:normal;font-weight:400;color:var(--muted);font-family:var(--mono);font-size:12px}
+.botrow .br{font-weight:700}.botrow .br.win{color:var(--good)}.botrow .br.loss{color:var(--critical)}
+.botrow .bm{color:var(--muted);font:12.5px var(--mono)}
+.botrow.off .bn,.botrow.off .br,.botrow.off .bm{opacity:.45;text-decoration:line-through}
+#botsPanel .bottbl{display:block;overflow-x:auto}
+.botimp{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.botimp details{flex:1;min-width:240px}.botimp summary{cursor:pointer;font:600 12px var(--mono);text-transform:uppercase;padding:7px 0;color:var(--muted)}
+.botimp textarea{width:100%;box-sizing:border-box;font:12px var(--mono);padding:10px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);margin:6px 0 8px;resize:vertical}
+@media(max-width:760px){.botrow{grid-template-columns:52px 1fr auto;row-gap:4px}.botrow .bm{grid-column:2/4}.botrow .chip{grid-column:2}.botrow .tgl{grid-column:2/4}}
 @media(max-width:760px){.endrow{grid-template-columns:1fr}.endrow .ek{grid-column:1}
   #rulesPanel .barrow,#recordPanel .barrow{grid-template-columns:96px 1fr auto;gap:8px}}
 .empty{color:var(--muted);font-size:var(--t-base);padding:var(--sp-7) var(--sp-4);text-align:center;line-height:1.6}
@@ -995,6 +1010,7 @@ html.nocur,html.nocur *{cursor:none!important}
       <button class="btn sm" id="exp" style="flex:1">Export</button>
       <button class="btn sm" id="imp" style="flex:1">Import</button>
     </div>
+    <button class="btn sm" data-botimp style="align-self:flex-start">Import chess.com bot games (PGN)</button>
     <button class="btn sm" id="reset" style="align-self:flex-start;opacity:.7">Start fresh</button>
   </div>
 </aside>
@@ -1200,6 +1216,10 @@ html.nocur,html.nocur *{cursor:none!important}
   <div class="card sect">
     <h2>Your record</h2>
     <div id="recordPanel"><div class="empty">Sync some games first.</div></div>
+  </div>
+  <div class="card sect">
+    <h2>Against chess.com bots</h2>
+    <div id="botsPanel"><div class="empty">Sync some games first.</div></div>
   </div>
   <div class="card sect">
     <h2>Drill accuracy by motif</h2>
@@ -1444,7 +1464,14 @@ const isCoachName=n=>/^coach-/i.test(String(n).trim());
 const isCoachGame=g=>!!g&&g.rated!==true&&(isCoachName(sideName(g.white))||isCoachName(sideName(g.black)));
 // The one list every aggregate should read. Anything counting DB.games directly
 // is counting coaching games too.
-const realGames=()=>Object.values(DB.games).filter(g=>g&&!isCoachGame(g));
+const realGames=()=>Object.values(DB.games).filter(g=>g&&!isCoachGame(g)&&!hintGame(g));
+// Games against a bot: ours from the Play tab, or chess.com's imported from a PGN.
+// They're real moves and still make drills, but never count as games against people.
+const isBotGame=g=>!!g&&(g.cls==="vs bot"||g.cls==="cc bot");
+// chess.com's bots offer hints, and a game played off the hint button measures
+// the engine, not you. You can flag one yourself; until you do, a game whose
+// moves match the engine far more often than yours usually do is treated as one.
+const hintGame=g=>!!g&&g.cls==="cc bot"&&(g.assisted!=null?g.assisted:!!g.hintLike);
 // Drills built from coaching games before they were excluded are still sitting
 // in the queue. Drop them once, on load and on import.
 function dropCoachDrills(){
@@ -3984,7 +4011,7 @@ function bookDepth(g){
   return best;
 }
 function openingStats(){
-  const gl=realGames().filter(g=>g.cls!=="vs bot");
+  const gl=realGames().filter(g=>!isBotGame(g));
   const out={w:{games:[],names:{},first:{}}, b:{games:[],names:{},first:{}}};
   for(const g of gl){
     const k=g.isWhite?"w":"b", o=out[k];
@@ -4119,7 +4146,7 @@ function renderOpenings(){
    only part of opening study that pays at this level, so that's what's flagged. */
 let EX={side:"w",path:[]}, exSel=null;
 const EXCACHE=new Map();
-const exGames=(side)=>realGames().filter(g=>g.cls!=="vs bot"&&g.obook&&g.obook.length&&(g.isWhite?"w":"b")===side);
+const exGames=(side)=>realGames().filter(g=>!isBotGame(g)&&g.obook&&g.obook.length&&(g.isWhite?"w":"b")===side);
 function exTree(side){
   const gs=exGames(side), key=side+"|"+gs.length+"|"+gs.reduce((a,g)=>Math.max(a,g.end||0),0);
   if(EXCACHE.has(key))return EXCACHE.get(key);
@@ -4329,7 +4356,7 @@ function renderClock(){
    Games against people only: coaching games and the Play-tab bots are left out,
    because a coach at "1200" you beat 26 times makes you look like a giant
    killer and a night owl when you're neither. */
-const humanGames=()=>realGames().filter(g=>g.cls!=="vs bot"&&g.result&&g.end)
+const humanGames=()=>realGames().filter(g=>!isBotGame(g)&&g.result&&g.end)
   .sort((a,b)=>a.end-b.end);
 const ptsOf=g=>g.result==="win"?1:g.result==="draw"?.5:0;
 const scoreOf=gs=>gs.length?Math.round(100*gs.reduce((s,g)=>s+ptsOf(g),0)/gs.length):null;
@@ -4456,8 +4483,177 @@ function renderRecord(){
     <p class="note">Lower and higher mean 100+ points from your rating at the time of the game.</p>
     ${casBlock}`;
 }
+
+/* ---------- chess.com bot games ----------
+   chess.com leaves games against its bots out of the public API, so they come in
+   as a PGN file from the game's Share → PGN. They're analysed like any other game
+   and still make drills, but they never count as games against people. */
+const pgnTag=(p,k)=>{const m=p.match(new RegExp('\\['+k+' "([^"]*)"\\]'));return m?m[1]:""};
+const splitPgns=txt=>String(txt).replace(/\r/g,"").split(/\n\s*\n(?=\[Event )/).map(s=>s.trim()).filter(s=>/^\[Event /.test(s));
+// Shape a bot-game PGN like a chess.com API game so analyseGame() takes it as is.
+function botGameFromPgn(p,user){
+  const W=pgnTag(p,"White"), B=pgnTag(p,"Black");
+  const side=W.toLowerCase()===user?"w":B.toLowerCase()===user?"b":null;
+  if(!side)return {skip:"not yours"};
+  const opp=side==="w"?B:W;
+  if(!/-BOT$/i.test(opp))return {skip:"not a bot"};
+  const res=pgnTag(p,"Result"), term=pgnTag(p,"Termination").toLowerCase();
+  const lost=/checkmate/.test(term)?"checkmated":/time/.test(term)?"timeout":/abandon/.test(term)?"abandoned":"resigned";
+  const drew=/stalemate/.test(term)?"stalemate":/repetition/.test(term)?"repetition":/insufficient/.test(term)?"insufficient":/50/.test(term)?"50move":"agreed";
+  const r=res==="1-0"?{w:"win",b:lost}:res==="0-1"?{w:lost,b:"win"}:res==="1/2-1/2"?{w:drew,b:drew}:null;
+  if(!r)return {skip:"unfinished"};
+  const d=(pgnTag(p,"EndDate")||pgnTag(p,"Date")).split(".").map(Number);
+  const end=d.length===3&&d[0]>2000?Math.floor(new Date(d[0],d[1]-1,d[2],12).getTime()/1000):Math.floor(Date.now()/1000);
+  const moves=p.split(/\n\n/).pop();
+  const url=pgnTag(p,"Link")||("pgn:"+W+"|"+B+"|"+end+"|"+moves.length+"|"+moves.slice(-40));
+  return {g:{url,pgn:p,rules:"chess",rated:false,time_class:"cc bot",time_control:"",end_time:end,
+    white:{username:W,rating:+pgnTag(p,"WhiteElo")||null,result:r.w},
+    black:{username:B,rating:+pgnTag(p,"BlackElo")||null,result:r.b}},
+    bot:opp.replace(/-BOT$/i,""), botElo:+(side==="w"?pgnTag(p,"BlackElo"):pgnTag(p,"WhiteElo"))||null};
+}
+// How often your moves were the engine's first choice once the opening is over,
+// plus the longest unbroken run of them. Lopsided positions stay in: against a
+// weak bot you're winning by move 15, and that's exactly when the hint button
+// gets pressed — the Ali game that prompted this was ten engine moves in a row
+// from +5 on, and a "still level" filter hid all but four of them.
+function engineMatch(g){
+  const M=(g.mlog||[]).filter(m=>m.n>8);
+  if(M.length<8)return null;
+  let run=0,best=0; for(const m of M){ run=m.top?run+1:0; if(run>best)best=run; }
+  return {n:M.length,top:Math.round(100*M.filter(m=>m.top).length/M.length),run:best};
+}
+// Your normal is measured on your games against people. A bot game well above it
+// (or with a long unbroken run of engine moves) reads as one played off hints.
+// Runs are judged against yours too: a long forced mop-up online can string
+// together engine moves, so the bar sits above the longest you normally manage.
+function hintBaseline(){
+  const S=realGames().filter(g=>!isBotGame(g)).map(engineMatch).filter(Boolean);
+  const q=(xs,p)=>xs.slice().sort((a,b)=>a-b)[Math.floor((xs.length-1)*p)];
+  if(S.length<10)return {med:40,p90:55,runLim:9,n:S.length};
+  return {med:q(S.map(s=>s.top),.5),p90:q(S.map(s=>s.top),.9),
+          runLim:Math.max(8,q(S.map(s=>s.run),.95)+2),n:S.length};
+}
+function refreshHintFlags(){
+  const b=hintBaseline(), lim=Math.max(b.p90+8,b.med+20);
+  let changed=false;
+  for(const g of Object.values(DB.games)){
+    if(!g||g.cls!=="cc bot")continue;
+    const s=engineMatch(g);
+    const h=!!s&&(s.top>=lim||s.run>=b.runLim);
+    if(g.hintLike!==h){ g.hintLike=h; changed=true; }
+  }
+  // your baseline moves as online games come in, and a game that tips over it
+  // has to leave the drill queue then, not on the next time you touch it
+  if(changed){ syncBotDrills(); save(); }
+  return {...b,lim};
+}
+// Drills follow the game: a hint game's "mistakes" aren't yours to drill.
+function syncBotDrills(){
+  const hint=new Set(Object.values(DB.games).filter(hintGame).map(g=>g.url));
+  DB.drills=DB.drills.filter(d=>!hint.has(d.url));
+  const have=new Set(DB.drills.map(d=>d.id));
+  for(const g of Object.values(DB.games))
+    if(g&&g.cls==="cc bot"&&!hint.has(g.url))
+      for(const d of g.drills||[]) if(!have.has(d.id))DB.drills.push(d);
+}
+function pickBotPgn(){
+  const i=document.createElement("input"); i.type="file"; i.accept=".pgn,.txt,application/x-chess-pgn,text/plain"; i.multiple=true;
+  i.onchange=async()=>{ let txt=""; for(const f of i.files||[])txt+=(await f.text())+"\n\n"; if(txt.trim())importBotPgn(txt); };
+  i.click();
+}
+let BOTIMP=false;
+async function importBotPgn(txt){
+  if(BOTIMP)return;
+  const user=(DB.user||"").toLowerCase();
+  if(!user){ toast("Set your chess.com username first, so we know which side is you."); return; }
+  const items=splitPgns(txt).map(p=>botGameFromPgn(p,user));
+  const fresh=items.filter(x=>x.g&&!DB.games[x.g.url]);
+  const dup=items.filter(x=>x.g&&DB.games[x.g.url]).length, skipped=items.filter(x=>x.skip).length;
+  if(!fresh.length){ toast(items.length?`Nothing new: ${dup} already imported${skipped?`, ${skipped} not bot games of yours`:""}.`:"No games found in that file."); return; }
+  BOTIMP=true; let done=0;
+  try{
+    for(const x of fresh){
+      stat(`analysing bot game ${done+1}/${fresh.length} — ${x.bot}`,"busy");
+      const rec=await analyseGame(x.g,user);
+      if(!rec)continue;
+      Object.assign(rec,{bot:x.bot,botElo:x.botElo});
+      DB.games[x.g.url]=rec; done++;
+    }
+  }finally{ BOTIMP=false; }
+  const b=refreshHintFlags(); syncBotDrills(); save(); renderAll();
+  const hinted=fresh.filter(x=>DB.games[x.g.url]&&DB.games[x.g.url].hintLike).length;
+  stat(`imported ${done} bot game${done===1?"":"s"}`,"new");
+  toast(`Imported ${done} bot game${done===1?"":"s"}${hinted?` · ${hinted} look${hinted===1?"s":""} like hints and ${hinted===1?"is":"are"} left out`:""}${dup?` · ${dup} already here`:""}.`,
+    {label:"See them",run:()=>{ const e=$("#botsPanel"); go("prog"); setTimeout(()=>e&&e.scrollIntoView({behavior:"smooth"}),300); }});
+}
+function renderBots(){
+  const el=$("#botsPanel"); if(!el)return;
+  const all=Object.values(DB.games).filter(g=>g&&g.cls==="cc bot").sort((a,b)=>b.end-a.end);
+  const btn=`<div class="botimp"><button class="btn sm" data-botimp>Import a .pgn file</button>
+    <details><summary>or paste PGN</summary>
+      <textarea id="botPaste" rows="6" placeholder="On chess.com: open the bot game → Share → PGN → copy, then paste here. Several games at once is fine."></textarea>
+      <button class="btn sm pri" data-botpaste>Import pasted games</button></details></div>`;
+  if(!all.length){
+    el.innerHTML=`<div class="opnote">chess.com doesn't share games against its bots with other apps, so they have to come in by hand.
+      Open a bot game on chess.com, choose <b>Share → PGN</b>, and save or copy it into a <code>.pgn</code> file
+      (several games can go in one file). They're analysed like your online games and kept separate from them.</div>${btn}`;
+    return;
+  }
+  const b=refreshHintFlags();
+  const used=all.filter(g=>!hintGame(g));
+  const sum=gs=>{ let mv=0,er=0,cp=0,cn=0,tp=0,tn=0;
+    for(const g of gs){ mv+=g.moves||0; er+=g.errs||0;
+      for(const m of g.mlog||[]){ cp+=Math.min(m.cpLoss||0,1000); cn++; }
+      const s=engineMatch(g); if(s){ tp+=s.top*s.n; tn+=s.n; } }
+    return {n:gs.length,score:scoreOf(gs),err:mv?(100*er/mv):null,acpl:cn?Math.round(cp/cn):null,top:tn?Math.round(tp/tn):null}; };
+  const BANDS=[["Bots under 800",g=>(g.botElo||0)<800],["Bots 800–1199",g=>g.botElo>=800&&g.botElo<1200],["Bots 1200+",g=>g.botElo>=1200]];
+  const online=humanGames().filter(g=>g.mlog&&g.mlog.length).slice(-30);
+  const rows=BANDS.map(([l,f])=>[l,sum(used.filter(f))]).filter(r=>r[1].n);
+  const on=sum(online);
+  const td=(v,s="")=>v==null?"—":v+s;
+  const top=rows.length?rows[rows.length-1]:null;
+  const verdict=top&&on.err!=null&&top[1].err!=null&&top[1].n>=3
+    ? (top[1].err<=on.err
+      ? `Against ${top[0].toLowerCase()} you make <b>${top[1].err.toFixed(1)}</b> serious errors per 100 moves; online it's <b>${on.err.toFixed(1)}</b>. You play the stronger bots at least as cleanly as you play people.`
+      : `Against ${top[0].toLowerCase()} you make <b>${top[1].err.toFixed(1)}</b> serious errors per 100 moves; online it's <b>${on.err.toFixed(1)}</b>. The bots are getting your sloppier games.`)
+    : "";
+  el.innerHTML=`
+    ${verdict?`<div class="capsum">${verdict}</div>`:""}
+    <table class="bottbl"><tr><th></th><th>Games</th><th>Score</th><th>Engine match</th><th>Errors / 100 moves</th><th>Avg loss</th></tr>
+      ${rows.map(([l,s])=>`<tr><td>${l}</td><td>${s.n}</td><td>${td(s.score,"%")}</td><td>${td(s.top,"%")}</td><td>${s.err==null?"—":s.err.toFixed(1)}</td><td>${td(s.acpl)}</td></tr>`).join("")}
+      <tr class="ref"><td>Online, last ${on.n}</td><td>${on.n}</td><td>${td(on.score,"%")}</td><td>${td(on.top,"%")}</td><td>${on.err==null?"—":on.err.toFixed(1)}</td><td>${td(on.acpl)}</td></tr>
+    </table>
+    <p class="note">chess.com's bot ratings aren't on the same scale as your online rating, so compare your mistakes, not the number next to the bot.
+      Engine match is how often your move was the engine's first choice once the opening was over; online you're usually around <b>${b.med}%</b>.
+      Avg loss is centipawns given away per move.</p>
+    <h3 class="rh">Your bot games</h3>
+    <div class="botlist">${all.map(g=>{ const s=engineMatch(g), h=hintGame(g);
+      const d=new Date(g.end*1000).toLocaleDateString([],{month:"short",day:"numeric"});
+      const r=g.result==="win"?"Won":g.result==="draw"?"Drew":"Lost";
+      return `<div class="botrow${h?" off":""}">
+        <span class="bd">${d}</span>
+        <span class="bn">${esc(g.bot||"Bot")}${g.botElo?` <i>${g.botElo}</i>`:""}</span>
+        <span class="br ${g.result}">${r}</span>
+        <span class="bm">${s?`${s.top}% match · ${s.run} in a row`:"too short to read"}</span>
+        ${g.hintLike&&g.assisted==null?`<span class="chip gap">looks like hints</span>`:"<span></span>"}
+        <label class="tgl"><input type="checkbox" data-hint="${esc(g.url)}"${h?" checked":""}> Used hints</label>
+      </div>`}).join("")}</div>
+    <p class="note">Games marked <b>Used hints</b> stay in your game list but leave every number and the drill queue.
+      A game is marked for you when your engine match is ${b.lim}%+ (well above your online ${b.p90}% on a good day)
+      or you play ${b.runLim}+ engine moves in a row (longer than you manage online); untick it if that was just a good game.</p>
+    ${btn}`;
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest("[data-botimp]"))pickBotPgn();
+  if(e.target.closest("[data-botpaste]")){ const t=$("#botPaste"); if(t&&t.value.trim())importBotPgn(t.value); }
+});
+document.addEventListener("change",e=>{
+  const c=e.target.closest("[data-hint]"); if(!c)return;
+  const g=DB.games[c.dataset.hint]; if(!g)return;
+  g.assisted=c.checked; syncBotDrills(); save(); renderAll();
+});
 function renderProgress(){
-  renderClock(); renderRules(); renderRecord();
+  renderClock(); renderRules(); renderRecord(); renderBots();
   const A=DB.attempts.filter(a=>!a.skipped);
   const acc=A.length?Math.round(100*A.filter(a=>a.correct).length/A.length):0;
   const med=(xs)=>{if(!xs.length)return 0;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
