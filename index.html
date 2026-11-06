@@ -355,6 +355,22 @@ td{color:var(--ink-2)}td:first-child{color:var(--ink);font-weight:600}
 .barrow{display:grid;grid-template-columns:150px 1fr 70px;gap:11px;align-items:center;font-size:13.5px}
 .barrow .t{color:var(--ink);font-weight:600}
 .barrow .n{text-align:right;color:var(--muted);font:12.5px var(--mono)}
+.rule{display:grid;grid-template-columns:40px 1fr;gap:14px;padding:var(--sp-4) 0;border-bottom:1px solid var(--hair)}
+.rule:first-child{padding-top:0}
+.rule .rn{font:900 var(--t-2xl)/1 var(--display);color:var(--acc)}
+.rule h4{margin:0 0 4px}.rule p{margin:0 0 12px;color:var(--ink-2);line-height:1.5}
+.rh{font:800 var(--t-sm) var(--display);letter-spacing:.06em;text-transform:uppercase;margin:var(--sp-6) 0 var(--sp-3)}
+.rsub{margin:0 0 12px;color:var(--ink-2)}
+.rtiles{margin-bottom:0}
+.endrow{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;align-items:center;margin-bottom:12px;font-size:13.5px}
+.endrow .el{color:var(--ink);font-weight:600}
+.endrow .stack{display:flex;gap:2px;height:22px}
+.endrow .stack i{display:flex;align-items:center;justify-content:center;font:700 11px var(--mono);font-style:normal;color:var(--plane);min-width:18px;opacity:.95}
+.endrow .stack i:nth-child(2){opacity:.75}.endrow .stack i:nth-child(3){opacity:.58}.endrow .stack i:nth-child(4){opacity:.42}
+.endrow .stack i.unk{background:var(--surface-2);color:var(--muted);opacity:1;border:1.5px dashed var(--hair)}
+.endrow .ek{grid-column:2;color:var(--muted);font-size:12.5px}
+@media(max-width:760px){.endrow{grid-template-columns:1fr}.endrow .ek{grid-column:1}
+  #rulesPanel .barrow,#recordPanel .barrow{grid-template-columns:96px 1fr auto;gap:8px}}
 .empty{color:var(--muted);font-size:var(--t-base);padding:var(--sp-7) var(--sp-4);text-align:center;line-height:1.6}
 .note{font-size:var(--t-sm);color:var(--muted);margin-top:var(--sp-4);line-height:1.55;max-width:76ch}
 input[type=text]{min-height:44px;background:var(--surface);border:2px solid var(--ink);color:var(--ink);border-radius:0;
@@ -1178,6 +1194,14 @@ html.nocur,html.nocur *{cursor:none!important}
   <div class="subnav"><button class="btn sm sub" data-go="weak">Weaknesses</button><button class="btn sm sub on" data-go="prog">Progress</button></div>
   <div class="tiles" id="statTiles"></div>
   <div class="card sect">
+    <h2>Your rules</h2>
+    <div id="rulesPanel"><div class="empty">Sync some games first.</div></div>
+  </div>
+  <div class="card sect">
+    <h2>Your record</h2>
+    <div id="recordPanel"><div class="empty">Sync some games first.</div></div>
+  </div>
+  <div class="card sect">
     <h2>Drill accuracy by motif</h2>
     <div class="bars" id="motifBars"><div class="empty">Do some drills first.</div></div>
     <p class="note">This is the number to watch. If double-attack accuracy climbs, the thing costing you games is getting fixed.</p>
@@ -1410,11 +1434,14 @@ const REPORTS=new Map();
    database and in the game list — they're the games most worth reading back —
    but every counter, rate and drill leaves them out. Names are matched on the
    opponent's account, lowercased, because that's the only thing in the API that
-   marks them: chess.com files them as ordinary unrated daily games. */
-const COACHES=["coach-david"];
+   marks them: chess.com files them as ordinary unrated daily games.
+   Every chess.com coach account is "Coach-<name>" (David, Levy, BotezSisters…),
+   so match the prefix rather than a list that misses each new coach. A rated
+   game is never a coaching game, which keeps a human who happens to call
+   themselves Coach-something in the numbers. */
 const sideName=p=>typeof p==="string"?p:(p&&p.username)||"";
-const isCoachGame=g=>!!g&&(COACHES.includes(sideName(g.white).toLowerCase().trim())||
-                           COACHES.includes(sideName(g.black).toLowerCase().trim()));
+const isCoachName=n=>/^coach-/i.test(String(n).trim());
+const isCoachGame=g=>!!g&&g.rated!==true&&(isCoachName(sideName(g.white))||isCoachName(sideName(g.black)));
 // The one list every aggregate should read. Anything counting DB.games directly
 // is counting coaching games too.
 const realGames=()=>Object.values(DB.games).filter(g=>g&&!isCoachGame(g));
@@ -2282,9 +2309,10 @@ async function sync(auto){
     let filled=0;
     for(const g of games){
       const known=DB.games[g.url]; if(!known)continue;
-      const {result,how}=resultOf(g,user);
+      const {result,how,ohow}=resultOf(g,user);
       let ch=false;
       if(result&&known.result!==result){ known.result=result; known.how=how; ch=true; }
+      if(ohow&&known.ohow!==ohow){ known.ohow=ohow; ch=true; }
       if(known.rated!==!!g.rated){ known.rated=!!g.rated; ch=true; }
       // backfill opening labels onto games analysed before this existed —
       // headers only, so nothing gets re-analysed
@@ -2357,7 +2385,10 @@ function resultOf(g,user){
   const isWhite=g.white.username.toLowerCase()===user;
   const raw=(isWhite?g.white.result:g.black.result)||"";
   const result = raw==="win" ? "win" : DRAWCODES.includes(raw) ? "draw" : raw ? "loss" : "";
-  return {result,how:raw};
+  // On a win our own code is just "win"; how it ended (mate, resignation, time)
+  // is on the opponent's side of the record.
+  const ohow=(isWhite?g.black.result:g.white.result)||"";
+  return {result,how:raw,ohow};
 }
 /* chess.com ships a [%clk] stamp on every ply and we used to throw all of it
    away. It's the only record of what you were actually doing at the board —
@@ -2430,14 +2461,14 @@ async function analyseGame(g,user,onProg){
     }
     if(onProg)onProg(i/hist.length);
   }
-  const {result,how}=resultOf(g,user);
+  const {result,how,ohow}=resultOf(g,user);
   // opening labels come free in the PGN headers — cheap to keep, and the whole
   // Openings report is built from them
   const pgn=g.pgn||"";
   const mEco=pgn.match(/\[ECO "([^"]+)"/);
   const mName=pgn.match(/\[ECOUrl "[^"]*\/openings\/([^"]+)"/);
   return {url:g.url,white:g.white.username,black:g.black.username,
-    wr:g.white.rating,br:g.black.rating,end:g.end_time,isWhite,result,how,rated:!!g.rated,
+    wr:g.white.rating,br:g.black.rating,end:g.end_time,isWhite,result,how,ohow,rated:!!g.rated,
     eco:mEco?mEco[1]:null,
     opening:mName?mName[1].replace(/-/g," "):null,
     obook:hist.slice(0,14).map(m=>m.san),
@@ -4294,8 +4325,139 @@ function renderClock(){
         : `Longer thinks are paying off — keep spending the clock where the position is hard.`}
       ${timeouts?`<br><br>You have also lost <b>${timeouts} game${timeouts>1?"s":""} on time</b>.`:""}</p>`;
 }
+/* ---------- your rules / your record ----------
+   Games against people only: coaching games and the Play-tab bots are left out,
+   because a coach at "1200" you beat 26 times makes you look like a giant
+   killer and a night owl when you're neither. */
+const humanGames=()=>realGames().filter(g=>g.cls!=="vs bot"&&g.result&&g.end)
+  .sort((a,b)=>a.end-b.end);
+const ptsOf=g=>g.result==="win"?1:g.result==="draw"?.5:0;
+const scoreOf=gs=>gs.length?Math.round(100*gs.reduce((s,g)=>s+ptsOf(g),0)/gs.length):null;
+const SESSION_GAP=45*60, TILT_GAP=60*60;
+const DAYPARTS=[["morning","in the morning",h=>h>=5&&h<12],["afternoon","in the afternoon",h=>h>=12&&h<17],
+  ["evening","in the evening",h=>h>=17&&h<22],["late night","late at night",h=>h>=22||h<5]];
+const daypart=g=>DAYPARTS.find(d=>d[2](new Date(g.end*1000).getHours()));
+// A rule only shows once the gap is big enough not to be a few lucky games:
+// at least 10 games on the smaller side and 10 points of score between them.
+const RULE_MIN_N=10, RULE_MIN_GAP=10;
+function computeRules(gs){
+  const out=[];
+  const test=(a,b,mk)=>{
+    if(a.length<RULE_MIN_N||b.length<RULE_MIN_N)return;
+    const sa=scoreOf(a), sb=scoreOf(b);
+    if(sb-sa>=RULE_MIN_GAP)out.push(Object.assign(mk(sa,sb),{gap:sb-sa,n:a.length+b.length}));
+  };
+  // straight after a loss, before you've had time to reset
+  const tilt=[], rest=[];
+  gs.forEach((g,i)=>{const p=gs[i-1];
+    (p&&p.result==="loss"&&g.end-p.end<TILT_GAP?tilt:rest).push(g)});
+  test(tilt,rest,(a,b)=>({title:"Take a break after a loss",
+    body:`In a game started within an hour of a loss you score <b>${a}%</b>. In your other games: <b>${b}%</b>.`,
+    a:[`next game after a loss`,a,tilt.length],b:[`other games`,b,rest.length]}));
+  // the worst part of the day against the rest of it
+  const parts=DAYPARTS.map(d=>({d,g:gs.filter(g=>daypart(g)===d)})).filter(p=>p.g.length>=RULE_MIN_N);
+  if(parts.length>1){
+    const worst=parts.reduce((w,p)=>scoreOf(p.g)<scoreOf(w.g)?p:w);
+    const other=gs.filter(g=>daypart(g)!==worst.d);
+    test(worst.g,other,(a,b)=>({title:`Don't play ${worst.d[1]}`,
+      body:`${worst.d[0][0].toUpperCase()+worst.d[0].slice(1)} games (${
+        {morning:"5 am–noon",afternoon:"noon–5 pm",evening:"5–10 pm","late night":"10 pm–5 am"}[worst.d[0]]
+      }) score <b>${a}%</b>. At other times: <b>${b}%</b>.`,
+      a:[worst.d[0],a,worst.g.length],b:[`other times`,b,other.length]}));
+  }
+  // long sessions: game four onwards, against the first three
+  const early=[], late=[]; let k=0;
+  gs.forEach((g,i)=>{k=(i&&g.end-gs[i-1].end<SESSION_GAP)?k+1:1; (k>3?late:early).push(g)});
+  test(late,early,(a,b)=>({title:"Stop after three games",
+    body:`From the fourth game in a sitting you score <b>${a}%</b>. In the first three: <b>${b}%</b>.`,
+    a:[`4th game on`,a,late.length],b:[`first three`,b,early.length]}));
+  return out.sort((x,y)=>y.gap-x.gap);
+}
+function renderRules(){
+  const el=$("#rulesPanel"); if(!el)return;
+  const gs=humanGames();
+  if(gs.length<2*RULE_MIN_N){ el.innerHTML=`<div class="empty">Rules need about ${2*RULE_MIN_N} games against people. You have ${gs.length}.</div>`; return; }
+  const R=computeRules(gs);
+  const bar=([lab,s,n],col)=>`<div class="barrow"><span class="t">${esc(lab)}</span>
+    <span class="track"><i style="width:${s}%;background:${col}"></i></span><span class="n">${s}% · ${n}</span></div>`;
+  el.innerHTML=(R.length?R.map((r,i)=>`
+    <div class="rule"><div class="rn">${i+1}</div><div>
+      <h4>${esc(r.title)}</h4><p>${r.body}</p>
+      <div class="bars">${bar(r.a,"var(--critical)")}${bar(r.b,"var(--good)")}</div>
+    </div></div>`).join("")
+    :`<div class="opnote good">No habit is costing you points yet: after a loss, the time of day and long sittings all score within ${RULE_MIN_GAP} points of your normal.</div>`)+
+    `<p class="note">Score is the share of points won (a draw is half). From your ${gs.length} games against people;
+     coaching games and games against bots are left out. A rule only appears when the gap is ${RULE_MIN_GAP}+ points
+     with ${RULE_MIN_N}+ games on each side.</p>`;
+}
+const ENDLAB={checkmated:"Checkmate",resigned:"Resignation",timeout:"On time",abandoned:"Abandoned"};
+function endingOf(g){
+  // for a win, how it ended is the opponent's code; games synced before that was
+  // kept still show a mate if the last move was one
+  const code=g.result==="win"?g.ohow:g.how;
+  if(code)return ENDLAB[code]||(DRAWCODES.includes(code)?"Draw":"Other");
+  const last=(g.mlog||[])[g.mlog?g.mlog.length-1:0];
+  return g.result==="win"&&last&&/#/.test(last.san)?"Checkmate":null;
+}
+function castleInfo(g){
+  const M=g.mlog||[];
+  const c=M.find(m=>/^O-O/.test(m.san));
+  return {long:M.length>=15,castled:!!c,side:c?(c.san.startsWith("O-O-O")?"q":"k"):null,n:c?c.n:null};
+}
+function renderRecord(){
+  const el=$("#recordPanel"); if(!el)return;
+  const gs=humanGames();
+  if(!gs.length){ el.innerHTML=`<div class="empty">Sync some games first.</div>`; return; }
+  const W=gs.filter(g=>g.result==="win"), L=gs.filter(g=>g.result==="loss"), D=gs.length-W.length-L.length;
+  // streaks, in the order the games were played
+  let bw=0,bl=0,cw=0,cl=0;
+  for(const g of gs){ cw=g.result==="win"?cw+1:0; cl=g.result==="loss"?cl+1:0; bw=Math.max(bw,cw); bl=Math.max(bl,cl); }
+  const cur=cw?`${cw} win${cw>1?"s":""}`:cl?`${cl} loss${cl>1?"es":""}`:"—";
+  // how games end
+  const ends=(xs)=>{const c={};let unknown=0;
+    for(const g of xs){const e=endingOf(g); if(e)c[e]=(c[e]||0)+1; else unknown++}
+    return {c,unknown}};
+  const endRow=(lab,xs,col)=>{const {c,unknown}=ends(xs);
+    const order=["Checkmate","Resignation","On time","Abandoned","Other"].filter(k=>c[k]);
+    return `<div class="endrow"><span class="el">${lab} <b>${xs.length}</b></span>
+      <span class="stack">${order.map(k=>`<i style="flex:${c[k]};background:${col}" title="${k}: ${c[k]}">${c[k]}</i>`).join("")}${unknown?`<i class="unk" style="flex:${unknown}" title="Not recorded yet: ${unknown}">${unknown}</i>`:""}</span>
+      <span class="ek">${order.map(k=>`${k} ${c[k]}`).join(" · ")}${unknown?` · not recorded ${unknown}`:""}</span></div>`};
+  const unk=ends(W).unknown;
+  // opponent level, against your rating at the time
+  const lv={lower:[],level:[],higher:[]};
+  for(const g of gs){ const me=g.isWhite?g.wr:g.br, op=g.isWhite?g.br:g.wr;
+    if(!me||!op)continue; lv[op-me<-100?"lower":op-me>100?"higher":"level"].push(g); }
+  const lvRow=(lab,xs)=>{const s=scoreOf(xs);
+    return xs.length?`<div class="barrow"><span class="t">${lab}</span>
+      <span class="track"><i style="width:${s}%;background:${s>=55?"var(--good)":s>=45?"var(--warning)":"var(--critical)"}"></i></span>
+      <span class="n">${s}% · ${xs.length}</span></div>`:""};
+  // castling, in games long enough for it to be a choice (15+ of your moves)
+  const CI=gs.map(g=>({g,c:castleInfo(g)})).filter(x=>x.c.long);
+  const cas=CI.filter(x=>x.c.castled), nc=CI.filter(x=>!x.c.castled);
+  const med=xs=>{if(!xs.length)return null;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
+  const casBlock=CI.length>=10?`
+    <h3 class="rh">Castling</h3>
+    <p class="rsub">You castle in <b>${Math.round(100*cas.length/CI.length)}%</b> of games, usually by move <b>${med(cas.map(x=>x.c.n))||"—"}</b>
+      (${cas.filter(x=>x.c.side==="k").length} kingside, ${cas.filter(x=>x.c.side==="q").length} queenside).</p>
+    <div class="bars">${lvRow("Castled",cas.map(x=>x.g))}${lvRow("Didn't castle",nc.map(x=>x.g))}</div>`:"";
+  el.innerHTML=`
+    <div class="tiles rtiles">
+      <div class="tile"><span class="v">${gs.length}</span><div class="k">games against people · ${W.length} won, ${D} drawn, ${L.length} lost</div></div>
+      <div class="tile ${scoreOf(gs)>=50?"g":"w"}"><span class="v">${scoreOf(gs)}%</span><div class="k">of points scored</div></div>
+      <div class="tile g"><span class="v">${bw}</span><div class="k">longest win streak</div></div>
+      <div class="tile c"><span class="v">${bl}</span><div class="k">longest losing streak</div></div>
+      <div class="tile"><span class="v">${cur}</span><div class="k">current run</div></div>
+    </div>
+    <h3 class="rh">How your games end</h3>
+    ${endRow("Wins",W,"var(--good)")}${endRow("Losses",L,"var(--critical)")}
+    ${unk?`<p class="note">${unk} older win${unk>1?"s":""} don't say how they ended yet. Run <b>Analyse my full history</b> once to fill them in; nothing gets re-analysed.</p>`:""}
+    <h3 class="rh">Against your level</h3>
+    <div class="bars">${lvRow("Lower rated",lv.lower)}${lvRow("About your level",lv.level)}${lvRow("Higher rated",lv.higher)}</div>
+    <p class="note">Lower and higher mean 100+ points from your rating at the time of the game.</p>
+    ${casBlock}`;
+}
 function renderProgress(){
-  renderClock();
+  renderClock(); renderRules(); renderRecord();
   const A=DB.attempts.filter(a=>!a.skipped);
   const acc=A.length?Math.round(100*A.filter(a=>a.correct).length/A.length):0;
   const med=(xs)=>{if(!xs.length)return 0;const s=xs.slice().sort((a,b)=>a-b);return s[Math.floor(s.length/2)]};
