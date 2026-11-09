@@ -256,7 +256,11 @@ b{color:var(--ink);font-weight:700}
 .board.mini .sq{cursor:default;pointer-events:none}
 .board.mini .coord{display:none}
 .board.still .sq{cursor:default}
-.ghost{position:fixed;z-index:9999;pointer-events:none;transform:translate(-50%,-50%);line-height:1}
+.ghost{position:fixed;left:0;top:0;z-index:9999;pointer-events:none;transform:translate(-50%,-50%);line-height:1;will-change:transform}
+.sq.over::before{content:"";position:absolute;inset:0;z-index:3;box-shadow:inset 0 0 0 .45cqw rgba(255,255,255,.85);pointer-events:none}
+.board:not(.still):not(.mini) .sq:has(.pc){cursor:grab}
+body.dragging,body.dragging .sq{cursor:grabbing!important}
+.sq.premv::after{content:"";position:absolute;inset:0;z-index:1;background:#e04b4b;opacity:.5}
 .pc{filter:drop-shadow(0 2px 1px rgba(0,0,0,.28))}
 .pc path,.pc circle{stroke-linejoin:round;stroke-linecap:round}
 .pc.w{fill:#FFFFFF;stroke:#121212;stroke-width:1.6}
@@ -308,6 +312,8 @@ b{color:var(--ink);font-weight:700}
 .pill.pos{background:var(--surface-2);color:var(--ink)}
 .timer{font:600 15px var(--mono);color:var(--muted)}
 .timer.alarm{color:var(--acc)}
+.clk{display:none;font:700 22px/1 var(--mono);padding:8px 14px;border:2px solid var(--ink);min-width:96px;text-align:right;font-variant-numeric:tabular-nums}
+.clk.on{background:var(--ink);color:#fff}.clk.low{color:var(--acc)}.clk.on.low{background:var(--acc);color:#fff;border-color:var(--acc)}
 .fb{padding:var(--sp-4) var(--sp-5);margin-top:var(--sp-4);font-size:var(--t-base);
  border:2px solid var(--ink);background:var(--surface);color:var(--ink-2);animation:rise var(--d3) var(--ease) both}
 .fb.ok{box-shadow:6px 6px 0 var(--good)}.fb.bad{box-shadow:6px 6px 0 var(--acc)}
@@ -1163,7 +1169,7 @@ html.nocur,html.nocur *{cursor:none!important}
     <p style="font-size:15px;max-width:62ch">When it's over the whole game gets analysed and
     anything you missed turns into drills on the Train tab.</p>
     <div class="sect" style="margin-top:22px">
-      <h2>Coach</h2>
+      <h2>Dr. Brainscan</h2>
       <div class="row" id="coachOpts" style="gap:12px"></div>
       <div class="colnote" id="coachNote" style="color:var(--muted)"></div>
     </div>
@@ -1178,6 +1184,10 @@ html.nocur,html.nocur *{cursor:none!important}
       <div class="colnote" id="colnote"></div>
     </div>
     <div class="sect" style="margin-top:24px">
+      <h2>Time</h2>
+      <div class="row" id="tcs" style="gap:12px"></div>
+    </div>
+    <div class="sect" style="margin-top:24px">
       <h2>Starting position</h2>
       <div class="row" id="presets" style="gap:12px"></div>
     </div>
@@ -1189,9 +1199,11 @@ html.nocur,html.nocur *{cursor:none!important}
       <div>
         <div class="qbar">
           <span class="pill" id="gStatus">your move</span>
+          <span class="clk" id="clkOpp"></span>
           <span class="timer" id="gTimer">0s</span>
         </div>
         <div class="board" id="gBoard"></div>
+        <div class="qbar" id="clkMeRow" style="margin:14px 0 0;justify-content:flex-end;display:none"><span class="clk" id="clkMe"></span></div>
         <div class="row" style="margin-top:22px">
           <button class="btn" id="resign">Resign</button>
           <button class="btn" id="takeback">Take back</button>
@@ -1203,8 +1215,9 @@ html.nocur,html.nocur *{cursor:none!important}
         <p class="lastmv" id="lastMv"></p>
         <p id="gSub" style="font-size:15px"></p>
         <div id="coachBox" style="display:none;margin:0 0 16px">
+          <div class="eyebrow" style="margin-bottom:8px">Dr. Brainscan · your coach</div>
           <div class="row" style="gap:10px">
-            <button class="btn sm" id="cCheck">Check my next move</button>
+            <button class="btn sm" id="cCheck">Scan my next move</button>
             <button class="btn sm" id="cStuck">I'm stuck</button>
           </div>
           <div id="cNote"></div>
@@ -1786,7 +1799,18 @@ function arrowLayer(arrows,flip){
       <path d="M0,0 L3.2,1.6 L0,3.2 z" fill="${a.color}"/></marker>`).join("");
   const lines=arrows.map((a,i)=>{
     const [x1,y1]=sqXY(a.from,flip), [x2,y2]=sqXY(a.to,flip);
-    const dx=x2-x1, dy=y2-y1, L=Math.hypot(dx,dy)||1;
+    const dx=x2-x1, dy=y2-y1;
+    // A knight's jump is drawn as an L, long leg first, the way chess.com does it,
+    // so it reads as a knight move instead of a diagonal that no piece can make.
+    const adx=Math.abs(dx), ady=Math.abs(dy);
+    if((adx===1&&ady===2)||(adx===2&&ady===1)){
+      const [cx,cy]= ady>adx ? [x1,y2] : [x2,y1];          // corner of the L
+      const lx=x2-cx, ly=y2-cy, L=Math.hypot(lx,ly)||1;
+      const ex=x2-(lx/L)*0.34, ey=y2-(ly/L)*0.34;
+      return `<polyline points="${x1},${y1} ${cx},${cy} ${ex},${ey}" fill="none" stroke="${a.color}" stroke-width="0.16"
+        stroke-linecap="round" stroke-linejoin="round" marker-end="url(#ah${i})" opacity=".92"/>`;
+    }
+    const L=Math.hypot(dx,dy)||1;
     const ex=x2-(dx/L)*0.34, ey=y2-(dy/L)*0.34;   // stop short so the head lands cleanly
     return `<line x1="${x1}" y1="${y1}" x2="${ex}" y2="${ey}" stroke="${a.color}" stroke-width="0.16"
       stroke-linecap="round" marker-end="url(#ah${i})" opacity=".92"/>`;
@@ -1823,14 +1847,24 @@ function slideDelta(prev,next){
     if(prev[k])gone.push([k,prev[k]]);
     if(next[k])came.push([k,next[k]]);
   }
-  if(came.length!==1)return null;                 // 0 = same position, 2+ = castling or a new one
-  const [to,pc]=came[0];
-  const src=gone.filter(([,p])=>p===pc);
-  if(src.length!==1)return null;                  // can't tell which one moved
-  return {from:src[0][0],to};
+  // One move (or castling's two) is all that's ever animated; anything bigger is
+  // a jump to a new position and is drawn in place.
+  if(!came.length||came.length>2)return null;
+  const out=[];
+  for(const [to,pc] of came){
+    let src=gone.filter(([,p])=>p===pc);
+    // a promotion arrives as a new piece: slide the pawn it replaced
+    if(!src.length&&came.length===1){ const pawn=pc===pc.toUpperCase()?"P":"p"; src=gone.filter(([,p])=>p===pawn); }
+    if(src.length!==1)return null;                // can't tell which one moved
+    out.push({from:src[0][0],to});
+  }
+  return out;
 }
 const REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)");
-function slidePiece(el,mv,flip){
+function slidePiece(el,mvs,flip){
+  for(const mv of mvs)slideOne(el,mv,flip);
+}
+function slideOne(el,mv,flip){
   try{
     const sz=el.clientWidth/8; if(!sz)return;     // board isn't on screen
     const at=n=>{ let f=FILES.indexOf(n[0]), r=8-parseInt(n[1],10);
@@ -1847,8 +1881,12 @@ function slidePiece(el,mv,flip){
   }catch(e){}
 }
 function renderBoard(el,fen,flip,marks={},arrows=null){
-  const slide=(el.__fen&&el.__flip===flip&&!(REDUCED&&REDUCED.matches))
+  let slide=(el.__fen&&el.__flip===flip&&!(REDUCED&&REDUCED.matches))
     ? slideDelta(placement(el.__fen),placement(fen)) : null;
+  // a piece you just dropped is already where it belongs: sliding it in again
+  // from its old square is the stutter chess.com doesn't have
+  if(slide&&el.__dropped){ slide=slide.filter(m=>m.from!==el.__dropped); if(!slide.length)slide=null; }
+  el.__dropped=null;
   el.__fen=fen; el.__flip=flip; el.__marks=marks; el.__arrows=arrows;
   const rows=fen.split(" ")[0].split("/"); let h="";
   const order=flip?[...Array(8).keys()].reverse():[...Array(8).keys()];
@@ -1881,7 +1919,7 @@ function wireBoardInput(el,api){
   let from=null, ghost=null, moved=false, sx=0, sy=0;
   const squareAt=(x,y)=>{const e=document.elementFromPoint(x,y); return e&&e.closest?e.closest(".sq"):null};
   const killGhost=()=>{ if(ghost){ghost.remove();ghost=null}
-    el.querySelectorAll(".pc.drag").forEach(p=>p.classList.remove("drag")); };
+    el.querySelectorAll(".pc.drag").forEach(p=>p.classList.remove("drag")); unOver(); };
   el.addEventListener("contextmenu",ev=>ev.preventDefault());
   // any stray pointer end anywhere clears a dangling ghost
   ["pointerup","pointercancel","blur"].forEach(t=>window.addEventListener(t,()=>{from=null;killGhost()}));
@@ -1889,6 +1927,7 @@ function wireBoardInput(el,api){
   el.addEventListener("pointerdown",ev=>{
     killGhost();                                   // never stack ghosts
     if(ev.button===2){                             // right button: draw, always available
+      if(api.rightDown&&api.rightDown()){ ev.preventDefault(); return; }   // e.g. cancels a premove
       const sq=ev.target.closest&&ev.target.closest(".sq");
       drawFrom=sq?sq.dataset.sq:null; ev.preventDefault(); return;
     }
@@ -1909,15 +1948,28 @@ function wireBoardInput(el,api){
       // needs the size it had on the board handed to it
       const cs=getComputedStyle(pc);
       ghost.style.width=cs.width; ghost.style.height=cs.height;
-      ghost.style.left=ev.clientX+"px"; ghost.style.top=ev.clientY+"px";
+      place(ev.clientX,ev.clientY);
       document.body.appendChild(ghost); pc.classList.add("drag");
+      document.body.classList.add("dragging");
     }
     try{el.setPointerCapture(ev.pointerId)}catch(e){}
   });
+  // The ghost moves by transform only, batched to one write per frame, so the
+  // drag never triggers layout. The square under it gets a ring, like chess.com.
+  let px=0,py=0,raf=0,over=null;
+  function place(x,y){ px=x; py=y; if(!raf)raf=requestAnimationFrame(frame); }
+  function frame(){
+    raf=0; if(!ghost)return;
+    ghost.style.transform=`translate3d(${px}px,${py}px,0) translate(-50%,-50%) scale(1.1)`;
+    if(!moved)return;
+    const sq=squareAt(px,py), hit=sq&&el.contains(sq)?sq:null;
+    if(hit!==over){ over&&over.classList.remove("over"); over=hit; over&&over.classList.add("over"); }
+  }
+  function unOver(){ if(over){over.classList.remove("over");over=null} document.body.classList.remove("dragging"); }
   el.addEventListener("pointermove",ev=>{
     if(!from||!ghost)return;
     if(Math.abs(ev.clientX-sx)>4||Math.abs(ev.clientY-sy)>4)moved=true;
-    ghost.style.left=ev.clientX+"px"; ghost.style.top=ev.clientY+"px";
+    place(ev.clientX,ev.clientY);
   });
   el.addEventListener("pointerup",ev=>{
     if(ev.button===2||drawFrom){
@@ -1940,9 +1992,9 @@ function wireBoardInput(el,api){
     const f=from; from=null; killGhost();
     if(!moved)return;                       // a tap: selection already handled
     const sq=squareAt(ev.clientX,ev.clientY);
-    const to=sq&&sq.dataset.sq;
-    if(to&&to!==f&&api.legal(f,to))api.commit(f,to);
-    else api.cancel();
+    const to=sq&&el.contains(sq)&&sq.dataset.sq;
+    if(to&&to!==f&&api.legal(f,to)){ el.__dropped=f; api.commit(f,to); }
+    else { if(to&&to!==f)FX.illegal(); api.cancel(); }
   });
   el.addEventListener("pointercancel",()=>{from=null;killGhost()});
 }
@@ -2893,11 +2945,26 @@ const FX=(()=>{
     const src=a.createBufferSource(), f=a.createBiquadFilter(), g=a.createGain();
     src.buffer=b; f.type="bandpass"; f.frequency.value=cap?850:1500; f.Q.value=1.2; g.gain.value=cap?1:.7;
     src.connect(f).connect(g).connect(a.destination); src.start(); };
-  const sound=()=>DB.sound===true, canBuzz=()=>!!navigator.vibrate;
+  // On unless you've switched it off, the way every chess site starts.
+  const sound=()=>DB.sound!==false, canBuzz=()=>!!navigator.vibrate;
   const buzz=(p)=>{ if(DB.haptics!==false&&canBuzz())try{ navigator.vibrate(p) }catch(e){} };
   return {
     canBuzz,
-    move(cap){ if(sound())knock(!!cap); },
+    // Takes a chess.js move (or, from older callers, just "was it a capture").
+    // Check, castling and promotion each sound different, so you can hear what
+    // happened without looking, the way you can on chess.com.
+    move(m){ if(!sound())return;
+      if(!m||typeof m!=="object"){ knock(!!m); return; }
+      const san=m.san||"";
+      if(/[+#]/.test(san)){ knock(!!m.captured); tone(880,.02,.16,"triangle",.12); return; }
+      if(/^O-O/.test(san)){ knock(false); setTimeout(()=>knock(false),90); return; }
+      if(m.promotion){ knock(!!m.captured); tone(660,.03,.12,"triangle",.1); tone(990,.1,.18,"triangle",.1); return; }
+      knock(!!m.captured); },
+    illegal(){ if(sound())tone(150,0,.12,"square",.04); },
+    end(win){ if(!sound())return;
+      if(win===true){ tone(523,0,.18,"triangle",.14); tone(659,.12,.18,"triangle",.14); tone(784,.24,.34,"triangle",.14); }
+      else if(win===false){ tone(392,0,.2,"triangle",.12); tone(330,.16,.34,"triangle",.12); }
+      else { tone(440,0,.25,"triangle",.12); tone(440,.2,.3,"triangle",.1); } },
     good(){ if(sound()){ tone(660,0,.14,"triangle",.18); tone(990,.09,.24,"triangle",.15); } buzz(30); },
     bad(){ if(sound()){ tone(220,0,.18,"square",.06); tone(165,.13,.26,"square",.06); } buzz([50,60,50]); }
   };
@@ -2914,7 +2981,7 @@ async function submit(from,to){
   const g=new Chess(cur.fen);
   const mv=g.move({from,to,promotion:promo});
   if(!mv){ answered=false; return; }
-  FX.move(mv.captured);
+  FX.move(mv);
   lastTry={from,to,san:mv.san};
   // compare the promotion piece too, so e8=N never scores as e8=Q
   const bestPromo=cur.best.slice(4,5);
@@ -3271,10 +3338,11 @@ function buildSetup(){
   }
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
-  $("#coachOpts").innerHTML=[["0","Off","no hints until it's over"],["1","On","check moves, hints, blunder warnings"]]
+  $("#coachOpts").innerHTML=[["0","Off","no hints until it's over"],["1","Call Dr. Brainscan","checks your moves, gives hints, catches blunders"]]
     .map(([k,n,s])=>`<button class="btn opt" data-k="coach" data-i="${k}">${n}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${s}</small></button>`).join("");
-  $("#coachNote").textContent="Coached games still make drills, but they're left out of your stats.";
-  const sel={lv:DB.playLv??0,col:DB.playCol??"w",pre:DB.playPre??"full",coach:DB.playCoach?"1":"0"};
+  $("#coachNote").textContent="Your coach. Games with Dr. Brainscan still make drills, but they're left out of your stats.";
+  $("#tcs").innerHTML=TCS.map(t=>`<button class="btn opt" data-k="tc" data-i="${t.id}">${t.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${t.note}</small></button>`).join("");
+  const sel={lv:DB.playLv??0,col:DB.playCol??"w",pre:DB.playPre??"full",coach:DB.playCoach?"1":"0",tc:DB.playTc??"none"};
   const mark=()=>{
     $$(".opt").forEach(b=>b.classList.toggle("on",String(sel[b.dataset.k])===String(b.dataset.i)));
     // mate drills hand you the extra material, so the colour choice is ignored — show that
@@ -3283,11 +3351,11 @@ function buildSetup(){
     const n=$("#colnote"); if(n)n.textContent=forced?"this drill always starts you as White":"";
   };
   $$(".opt").forEach(b=>b.onclick=()=>{sel[b.dataset.k]=b.dataset.i;mark();
-    DB.playLv=+sel.lv;DB.playCol=sel.col;DB.playPre=sel.pre;DB.playCoach=sel.coach==="1";save();});
+    DB.playLv=+sel.lv;DB.playCol=sel.col;DB.playPre=sel.pre;DB.playCoach=sel.coach==="1";DB.playTc=sel.tc;save();});
   mark();
-  $("#startGame").onclick=()=>startGame(+sel.lv, sel.col, sel.pre, sel.coach==="1");
+  $("#startGame").onclick=()=>startGame(+sel.lv, sel.col, sel.pre, sel.coach==="1", sel.tc);
 }
-function startGame(lvId,colChoice,preId,coach=false){
+function startGame(lvId,colChoice,preId,coach=false,tc="none"){
   const lv=levelById(lvId), pre=PRESETS.find(p=>p.id===preId)||PRESETS[0];
   let hero = colChoice==="r" ? (Math.random()<.5?"w":"b") : colChoice;
   if(pre.fen) hero="w";                       // mate drills always give you the material
@@ -3302,23 +3370,79 @@ function startGame(lvId,colChoice,preId,coach=false){
   const flipped = colChoice==="r" && !pre.fen;
   $("#gSub").innerHTML=`${flipped?`<b class="coin">Random gave you ${hero==="w"?"White":"Black"}.</b> `:""}`+
     `You're <b>${hero==="w"?"White":"Black"}</b>${lv.adaptive?` against <b>${lv.name.toLowerCase()}</b>, now ${LEVELS.find(l=>l.id===LADDER[lv.ladderIdx]).name} ~${lv.elo}`:""}. `+
-    (coach ? `The coach is on: it warns you before a blunder lands, and you can check a move or ask for a hint.`
+    (coach ? `Dr. Brainscan is in: blunders get stopped before they land, and you can ask for a move scan or a hint any time.`
            : `No help until it's over — then I analyse the whole thing.`);
-  G.coach=coach; G.cc=null;
+  G.coach=coach; G.cc=null; G.pm=null;
   $("#coachBox").style.display=coach?"block":"none"; $("#cNote").innerHTML="";
+  const T=TCS.find(t=>t.id===tc);
+  G.clock=T&&T.base?{w:T.base*1000,b:T.base*1000,inc:T.inc*1000,run:null,since:0,label:T.name}:null;
+  $("#clkOpp").style.display=$("#clkMe").style.display=G.clock?"inline-block":"none";
+  $("#clkMeRow").style.display=G.clock?"flex":"none";
+  $("#gTimer").style.display=G.clock?"none":"";
   if(flipped){ DB.flips=DB.flips||{w:0,b:0}; DB.flips[hero]++; save(); }
   clearInterval(G.tick);
   G.tick=setInterval(()=>{ if(!G||G.over)return;
+    if(G.clock){ drawClocks(); return; }
     const s=Math.round((Date.now()-G.t0)/1000), el=$("#gTimer");
     if(G.ch.turn()===G.hero){el.textContent=s+"s"; el.className="timer"+(s>=30?" alarm":"");}
-  },250);
+  },100);
+  drawClocks();
+  if(ch.turn()===hero)clockGo(hero);
   drawGame(); maybeEngine(); coachPrep();
+}
+
+/* ---------- clocks ----------
+   Real time controls, so practice games feel like the ones you play online.
+   Time only runs for whoever is to move. While Dr. Brainscan has stopped the
+   game to talk, nobody's clock runs: that's coaching time, not playing time. */
+const TCS=[
+  {id:"none",  name:"No clock",note:"take as long as you need"},
+  {id:"300+0", name:"5 | 0",   note:"blitz",base:300,inc:0},
+  {id:"600+0", name:"10 | 0",  note:"rapid",base:600,inc:0},
+  {id:"900+10",name:"15 | 10", note:"rapid, with increment",base:900,inc:10},
+];
+const clockLeft=(c)=>!G||!G.clock?0:G.clock[c]-(G.clock.run===c?Date.now()-G.clock.since:0);
+function clockGo(c){ if(!G||!G.clock||G.over)return; clockHalt(false); G.clock.run=c; G.clock.since=Date.now(); drawClocks(); }
+// Stop whoever is running; `inc` adds their increment, as making a move does.
+function clockHalt(inc){
+  const k=G&&G.clock; if(!k||!k.run)return;
+  k[k.run]-=Date.now()-k.since; if(inc)k[k.run]+=k.inc; k.lastInc=inc?k.run:null;
+  k.run=null; drawClocks();
+}
+function fmtClock(ms){
+  ms=Math.max(0,ms); const t=Math.ceil(ms/100)/10;
+  if(t<20)return t.toFixed(1);
+  const m=Math.floor(Math.ceil(ms/1000)/60), sec=Math.ceil(ms/1000)%60;
+  return m+":"+String(sec).padStart(2,"0");
+}
+function drawClocks(){
+  if(!G||!G.clock)return;
+  const foe=G.hero==="w"?"b":"w";
+  for(const [c,el] of [[G.hero,$("#clkMe")],[foe,$("#clkOpp")]]){
+    const ms=clockLeft(c);
+    el.textContent=fmtClock(ms);
+    el.className="clk"+(G.clock.run===c?" on":"")+(ms<20000?" low":"");
+    if(ms<=0&&G.clock.run===c&&!G.over)flagged(c);
+  }
+}
+function flagged(c){
+  clockHalt(false); G.clock[c]=0;
+  G.over=true; clearInterval(G.tick);
+  const mine=c===G.hero;
+  // you can't lose on time to a lone king: there's nothing to mate you with
+  const foeHasMaterial=G.ch.board().flat().some(p=>p&&p.color!==c&&p.type!=="k");
+  G.result=foeHasMaterial?(mine?"loss":"win"):"draw";
+  $("#gStatus").textContent="finished";
+  $("#gTitle").textContent=G.result==="draw"?"Time ran out, but it's a draw: nothing left to mate with."
+    :mine?"You ran out of time.":"They ran out of time. You win.";
+  gameEnded();
 }
 function drawGame(marks={}){
   const base={};
   if(G.lastMove){ base[G.lastMove.from]="lmf"; base[G.lastMove.to]="lmt"; }
   const cc=G.cc&&G.cc.fen===G.ch.fen()?G.cc:null;     // hints only belong to the position they were made for
   if(cc&&cc.marks)Object.assign(base,cc.marks);
+  if(G.pm){ base[G.pm.from]="premv"; base[G.pm.to]="premv"; }
   renderBoard($("#gBoard"),G.ch.fen(),G.hero==="b",Object.assign(base,marks),cc&&cc.arrows?cc.arrows:null);
   const h=G.ch.history(); let s="";
   for(let i=0;i<h.length;i+=2) s+=`${i/2+1}. ${h[i]||""} ${h[i+1]||""}  `;
@@ -3326,8 +3450,56 @@ function drawGame(marks={}){
   $("#moveList").scrollTop=1e6;
 }
 let gSel=null;
+/* ---------- premoves ----------
+   While the bot is thinking you can queue your next move, like chess.com. The
+   squares a piece could reach are worked out from its geometry alone, ignoring
+   whose piece is in the way, because the position will have changed by the time
+   it plays: retaking on a square your own piece stands on now is the commonest
+   premove there is. It's checked for real when it's time to play it, and dropped
+   quietly if it's no longer legal. Right-click clears it. */
+function pmTargets(fen,from){
+  let g; try{ g=new Chess(fen) }catch(e){ return [] }
+  const p=g.get(from); if(!p||p.color!==G.hero)return [];
+  const f=FILES.indexOf(from[0]), r=+from[1], out=[];
+  const on=(ff,rr)=>ff>=0&&ff<8&&rr>=1&&rr<=8, at=(ff,rr)=>FILES[ff]+rr;
+  const add=(ff,rr)=>{ if(on(ff,rr))out.push(at(ff,rr)); };
+  const ray=(df,dr)=>{ let ff=f+df, rr=r+dr; while(on(ff,rr)){ out.push(at(ff,rr)); if(g.get(at(ff,rr)))break; ff+=df; rr+=dr; } };
+  if(p.type==="n")[[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]].forEach(([a,b])=>add(f+a,r+b));
+  if(p.type==="k"){
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)if(a||b)add(f+a,r+b);
+    const cr=fen.split(" ")[2]||"", home=p.color==="w"?1:8;
+    if(r===home&&f===4){ if(cr.includes(p.color==="w"?"K":"k"))add(6,home); if(cr.includes(p.color==="w"?"Q":"q"))add(2,home); }
+  }
+  if(p.type==="b"||p.type==="q")[[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([a,b])=>ray(a,b));
+  if(p.type==="r"||p.type==="q")[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>ray(a,b));
+  if(p.type==="p"){
+    const d=p.color==="w"?1:-1, start=p.color==="w"?2:7;
+    add(f,r+d); add(f-1,r+d); add(f+1,r+d);
+    if(r===start&&!g.get(at(f,r+d)))add(f,r+2*d);
+  }
+  return out.filter(t=>t!==from);
+}
+function setPremove(from,to){ G.pm={from,to}; gSel=null; drawGame(); }
+function clearPremove(){ const had=!!(G&&(G.pm||gSel)); if(G){G.pm=null;gSel=null;drawGame();} return had; }
+// Called once the bot has moved and the clock is yours.
+function runPremove(){
+  if(!G||!G.pm||G.over||G.ch.turn()!==G.hero)return;
+  const {from,to}=G.pm, id=G.id; G.pm=null;
+  const ok=G.ch.moves({verbose:true}).some(m=>m.from===from&&m.to===to);
+  if(!ok){ drawGame(); return; }
+  setTimeout(()=>{ if(liveGame(id)&&G.ch.turn()===G.hero&&!(G.cc&&G.cc.pending))playHuman(from,to,"q"); },40);
+}
 function onGameSquare(name){
-  if(!G||G.over||G.ch.turn()!==G.hero)return;
+  if(!G||G.over)return;
+  if(G.ch.turn()!==G.hero){                      // their move: build a premove instead
+    if(G.cc&&G.cc.pending)return;
+    const fen=G.ch.fen();
+    if(gSel&&pmTargets(fen,gSel).includes(name)){ setPremove(gSel,name); return; }
+    const t=pmTargets(fen,name);
+    if(!t.length){ clearPremove(); return; }
+    G.pm=null; gSel=name; const marks={[name]:"sel"}; t.forEach(x=>{if(!marks[x])marks[x]="dotm"});
+    drawGame(marks); return;
+  }
   if(gSel){
     const ok=G.ch.moves({verbose:true}).some(m=>m.from===gSel&&m.to===name);
     if(ok){ playHuman(gSel,name); gSel=null; return; }
@@ -3355,17 +3527,18 @@ function askPromotion(color){
     el.style.display="flex";
   });
 }
-async function playHuman(from,to){
+async function playHuman(from,to,forcePromo){
   const id=G.id;
-  let promo='q';
-  if(isPromotion(G.ch,from,to)){
+  let promo=forcePromo||'q';
+  if(!forcePromo&&isPromotion(G.ch,from,to)){
     promo=await askPromotion(G.hero);
     if(!liveGame(id))return;
   }
   G.times.push(Math.round((Date.now()-G.t0)/1000));
   const m=G.ch.move({from,to,promotion:promo});
   if(!m)return;
-  FX.move(m.captured);
+  clockHalt(true);
+  FX.move(m);
   const prevLast=G.lastMove;
   G.lastMove={from,to,san:m?m.san:"",by:"you"};
   $("#lastMv").innerHTML=`<span class="q">you played</span> <b>${m?m.san:""}</b>`;
@@ -3377,6 +3550,7 @@ const MIN_THINK=900;   // never reply instantly — you can't read a move that a
 async function maybeEngine(){
   if(!G||G.over||G.ch.turn()===G.hero)return;
   const id=G.id;
+  clockGo(G.hero==="w"?"b":"w");
   $("#gStatus").textContent="their move…";
   $("#lastMv").innerHTML=`<span class="q">thinking…</span>`;
   const t=Date.now();
@@ -3391,13 +3565,14 @@ async function maybeEngine(){
   if(!mv)for(const c of cands){ mv=tryMove(c.mv); if(mv)break; }
   if(!mv){ const legal=G.ch.moves({verbose:true}); if(!legal.length)return; mv=G.ch.move(legal[0].san); }
   if(!mv)return;
-  FX.move(mv.captured);
+  FX.move(mv);
   G.lastMove={from:mv.from,to:mv.to,san:mv.san,by:"them"};
   const what = mv.captured ? ` <span class="q">— took your ${({p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen"})[mv.captured]}</span>` : "";
   $("#lastMv").innerHTML=`<span class="q">they played</span> <b>${mv.san}</b>${what}`;
+  clockHalt(true);
   drawGame(); G.t0=Date.now();
   $("#gStatus").textContent="your move";
-  if(!checkOver())coachPrep();
+  if(!checkOver()){ clockGo(G.hero); coachPrep(); runPremove(); }
 }
 
 /* ---------- coach ----------
@@ -3405,7 +3580,7 @@ async function maybeEngine(){
    plain rules for putting a line into words. It analyses each position as soon
    as it's your move, so a check or a hint is usually ready by the time you ask.
    Three things it does:
-   - "Check my next move": your move is played on the board but the bot waits.
+   - "Scan my next move": your move is played on the board but the bot waits.
      You get a verdict and their best reply, then keep it or take it back.
    - "I'm stuck": hints in steps. First what's attacking you and what's
      forcing for you, then which piece to look at, then the move itself.
@@ -3417,7 +3592,7 @@ function coachPrep(){
   const fen=G.ch.fen(), id=G.id;
   G.cc={fen,id,armed:false,hint:0,marks:null,arrows:null,pending:null,
         pre:analyse(fen,COACH_DEPTH,PRIO.LIVE),threat:null};
-  $("#cCheck").textContent="Check my next move"; $("#cCheck").classList.remove("pri");
+  $("#cCheck").textContent="Scan my next move"; $("#cCheck").classList.remove("pri");
   $("#cNote").innerHTML=G.carry?`<div class="revstat" style="padding:8px 0">${G.carry}</div>`:"";
   G.carry="";
 }
@@ -3452,8 +3627,8 @@ function grade(drop,top){
 async function coachAfterHuman(m,prevLast){
   const cc=G.cc, id=G.id, armed=cc.armed;
   cc.pending={m,prevLast};
-  $("#gStatus").textContent="coach is looking…";
-  $("#cNote").innerHTML=`<div class="fb"><div class="hd">Checking ${esc(m.san)}…</div>Looking at what this move allows.</div>`;
+  $("#gStatus").textContent="Dr. Brainscan is scanning…";
+  $("#cNote").innerHTML=`<div class="fb"><div class="hd">Scanning ${esc(m.san)}…</div>Dr. Brainscan is looking at what this move allows.</div>`;
   const pre=await cc.pre;
   const after=G.ch.fen();
   const r2=G.ch.game_over()?null:await analyse(after,COACH_DEPTH,PRIO.LIVE);
@@ -3476,12 +3651,12 @@ async function coachAfterHuman(m,prevLast){
   const best=pre.best&&!top?describeReply(cc.fen,pre.best,"their"):null;
   if(!armed&&(drop<THRESH||(!tactical&&drop<25))){
     cc.pending=null;
-    G.carry = top ? `<b>${esc(m.san)}</b> was the engine's choice too.`
+    G.carry = top ? `Dr. Brainscan approves: <b>${esc(m.san)}</b> was the engine's choice too.`
             : drop>=5 ? `<b>${esc(m.san)}</b> was ${gr.w==="Inaccuracy"?"an inaccuracy":"a mistake"}. ${best?`Better was ${best}.`:""}`
             : "";
     $("#gStatus").textContent="thinking…"; maybeEngine(); return;
   }
-  $("#cNote").innerHTML=`<div class="fb ${gr.cls}"><div class="hd">${armed?"":"Hold on. "}${esc(m.san)}: ${gr.w}</div>
+  $("#cNote").innerHTML=`<div class="fb ${gr.cls}"><div class="hd">${armed?"":"Hold on! "}${esc(m.san)}: ${gr.w}</div>
     ${!armed?"That move gives a lot away. ":""}${why}
     ${drop>=THRESH&&tactical?`<div style="margin-top:8px;color:var(--muted)">Before you move, look at every check and capture they'd have after it.</div>`:""}
     <div class="row" style="gap:10px;margin-top:14px">
@@ -3501,8 +3676,10 @@ async function coachAfterHuman(m,prevLast){
 function coachUndo(cc){
   if(!G||G.over||G.cc!==cc||!cc.pending)return;
   G.ch.undo(); G.times.pop();
+  if(G.clock&&G.clock.lastInc===G.hero){ G.clock[G.hero]-=G.clock.inc; G.clock.lastInc=null; }   // no increment for a move you took back
+  clockGo(G.hero);
   G.lastMove=cc.pending.prevLast; cc.pending=null; cc.armed=false;
-  $("#cCheck").textContent="Check my next move"; $("#cCheck").classList.remove("pri");
+  $("#cCheck").textContent="Scan my next move"; $("#cCheck").classList.remove("pri");
   $("#lastMv").innerHTML=`<span class="q">took it back — your move</span>`;
   $("#gStatus").textContent="your move"; G.t0=Date.now();
   // keep the "better move" arrow if they asked for it, drop the rest of the panel
@@ -3513,7 +3690,7 @@ function coachUndo(cc){
 $("#cCheck").onclick=()=>{
   if(!G||!G.coach||G.over||!G.cc||G.cc.pending||G.ch.turn()!==G.hero)return;
   const cc=G.cc; cc.armed=!cc.armed;
-  $("#cCheck").textContent=cc.armed?"Checking: make your move":"Check my next move";
+  $("#cCheck").textContent=cc.armed?"Scanning: make your move":"Scan my next move";
   $("#cCheck").classList.toggle("pri",cc.armed);
 };
 $("#cStuck").onclick=async()=>{
@@ -3581,6 +3758,8 @@ function checkOver(){
 }
 // Shared end of game: the coach goes quiet, Adaptive moves, the review runs.
 function gameEnded(){
+  clockHalt(false); G.pm=null; gSel=null;
+  FX.end(G.result==="win"?true:G.result==="loss"?false:null);
   $("#coachBox").style.display="none";
   const msg=adaptAfter(G.lv,G.result);
   if(msg)$("#gSub").innerHTML=`<b>${esc(msg)}</b>`;
@@ -3591,7 +3770,7 @@ $("#resign").onclick=()=>{ if(!G||G.over)return; G.over=true; G.result="loss"; c
 $("#takeback").onclick=()=>{ if(!G||G.over)return;
   if(G.ch.turn()!==G.hero||(G.cc&&G.cc.pending))return;   // only between your moves
   if(G.ch.history().length<2)return;            // nothing of yours to take back yet
-  G.ch.undo(); G.ch.undo(); gSel=null; G.lastMove=null;
+  G.ch.undo(); G.ch.undo(); gSel=null; G.pm=null; G.lastMove=null;
   $("#lastMv").innerHTML=`<span class="q">took back — your move</span>`; coachPrep(); drawGame(); };
 $("#newGame").onclick=()=>{ if(G)G.over=true; clearInterval(G&&G.tick);
   $("#gameUI").style.display="none"; $("#setup").style.display="block"; boardFocus("play",false); };
@@ -6355,7 +6534,7 @@ const uciMove=(g,u)=>g.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]||u
 function pzReply(){                          // the opponent's half of the line
   const P=PZ; if(!P)return;
   const mv=uciMove(P.g,P.p.line[P.i]);
-  P.i++; P.last=mv; FX.move(mv&&mv.captured);
+  P.i++; P.last=mv; FX.move(mv);
   P.busy=false; if(!P.t0)P.t0=Date.now();
   pzDraw();
 }
@@ -6368,7 +6547,7 @@ async function pzTry(from,to){
   // any mate ends the puzzle, even one that isn't the move on file
   const right=from+to+(mv.promotion||"")===want||t.in_checkmate();
   if(right){
-    P.g.move({from,to,promotion:promo||"q"}); P.last=mv; P.i++; FX.move(mv.captured);
+    P.g.move({from,to,promotion:promo||"q"}); P.last=mv; P.i++; FX.move(mv);
     if(P.i>=P.p.line.length||t.in_checkmate())return pzSolved();
     P.busy=true; pzDraw();
     setTimeout(()=>{ if(PZ===P)pzReply(); },380);
@@ -6433,7 +6612,7 @@ function pzSolution(){
         Puzzle rated <b>${P.p.r}</b>${pzLabel(P.p)?" — "+esc(pzLabel(P.p)):""}.</div>`;
       pzCtx(); $("#pzNext").style.display="inline-block"; return;
     }
-    const mine=P.i%2===1, mv=uciMove(P.g,P.p.line[P.i]); P.i++; P.last=mv; FX.move(mv&&mv.captured);
+    const mine=P.i%2===1, mv=uciMove(P.g,P.p.line[P.i]); P.i++; P.last=mv; FX.move(mv);
     pzDraw(mine?{[mv.from]:"ok",[mv.to]:"ok"}:{},mine?[{from:mv.from,to:mv.to,color:GREEN}]:null);
     setTimeout(step,750);
   };
@@ -6973,11 +7152,13 @@ wireBoardInput($("#board"),{
   redraw:()=>{ if(answered)showAnswerBoard(); else drawBoard(); }
 });
 wireBoardInput($("#gBoard"),{
-  enabled:()=>!!G&&!G.over&&G.ch.turn()===G.hero,
+  enabled:()=>!!G&&!G.over&&!(G.cc&&G.cc.pending),
   click:(n)=>onGameSquare(n),
   selected:()=>gSel,
-  legal:(f,t)=>{try{return G.ch.moves({verbose:true}).some(m=>m.from===f&&m.to===t)}catch(e){return false}},
-  commit:(f,t)=>playHuman(f,t),
+  legal:(f,t)=>{try{ return G.ch.turn()===G.hero ? G.ch.moves({verbose:true}).some(m=>m.from===f&&m.to===t)
+                                                 : pmTargets(G.ch.fen(),f).includes(t) }catch(e){return false}},
+  commit:(f,t)=>{ if(G.ch.turn()===G.hero)playHuman(f,t); else setPremove(f,t); },
+  rightDown:()=>!!G&&!G.over&&G.ch.turn()!==G.hero&&clearPremove(),
   cancel:()=>{gSel=null;drawGame()},
   redraw:()=>{ if(REV&&G&&G.over)showMoment(); else drawGame(); }
 });
@@ -7139,7 +7320,7 @@ function whoText(){
 // Sound and buzz settings live in the Account drawer.
 {
   const so=$("#optSound"), bz=$("#optBuzz");
-  so.checked=DB.sound===true; bz.checked=DB.haptics!==false;
+  so.checked=DB.sound!==false; bz.checked=DB.haptics!==false;
   if(!FX.canBuzz())$("#optBuzzRow").style.display="none";
   so.onchange=()=>{ DB.sound=so.checked; save(); if(so.checked)FX.move(false); };
   bz.onchange=()=>{ DB.haptics=bz.checked; save(); if(bz.checked)FX.good(); };
