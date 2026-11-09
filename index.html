@@ -3338,7 +3338,7 @@ function buildSetup(){
   }
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
-  $("#coachOpts").innerHTML=[["0","Off","no hints until it's over"],["1","Call Dr. Brainscan","checks your moves, gives hints, catches blunders"]]
+  $("#coachOpts").innerHTML=[["0","Off","no hints until it's over"],["1","Dr. Brainscan","checks your moves, gives hints, catches blunders"]]
     .map(([k,n,s])=>`<button class="btn opt" data-k="coach" data-i="${k}">${n}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${s}</small></button>`).join("");
   $("#coachNote").textContent="Your coach. Games with Dr. Brainscan still make drills, but they're left out of your stats.";
   $("#tcs").innerHTML=TCS.map(t=>`<button class="btn opt" data-k="tc" data-i="${t.id}">${t.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${t.note}</small></button>`).join("");
