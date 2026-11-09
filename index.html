@@ -1689,6 +1689,12 @@ async function spawnWorker(ms=30000){
     const h=e=>{ if((''+e.data).includes('uciok')){clearTimeout(to);w.removeEventListener('message',h);res()} };
     w.addEventListener('message',h); w.postMessage('uci');
   });
+  // Stockfish 10 ships with Contempt 24, which tilts every score toward the
+  // side to move: it rated the starting position +1.16 and 1.d4 a pawn worse
+  // than 1.e4, so Dr. Brainscan called a normal opening move a mistake. With it
+  // off the same comparison is about 0.3 pawns, which is what it really is.
+  w.postMessage('setoption name Contempt value 0');
+  w.postMessage('setoption name Analysis Contempt value Off');
   return w;
 }
 async function restartEngine(){
