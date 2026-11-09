@@ -260,6 +260,11 @@ b{color:var(--ink);font-weight:700}
 .sq.over::before{content:"";position:absolute;inset:0;z-index:3;box-shadow:inset 0 0 0 .45cqw rgba(255,255,255,.85);pointer-events:none}
 .board:not(.still):not(.mini) .sq:has(.pc){cursor:grab}
 body.dragging,body.dragging .sq{cursor:grabbing!important}
+.rbadge{position:absolute;top:-8%;right:-8%;width:36%;height:36%;border-radius:50%;z-index:6;pointer-events:none;
+ display:flex;align-items:center;justify-content:center;color:#fff;font:800 max(10px,2.6cqw)/1 var(--mono);letter-spacing:-.06em;
+ border:max(1.5px,.35cqw) solid #fff;box-shadow:0 2px 3px rgba(0,0,0,.35);animation:markIn var(--d2) var(--ease-s)}
+.rchip{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 4px;border-radius:11px;
+ color:#fff;font:800 12px/1 var(--mono);letter-spacing:-.04em;vertical-align:-4px;margin-right:4px}
 .sq.premv::after{content:"";position:absolute;inset:0;z-index:1;background:#e04b4b;opacity:.5}
 .pc{filter:drop-shadow(0 2px 1px rgba(0,0,0,.28))}
 .pc path,.pc circle{stroke-linejoin:round;stroke-linecap:round}
@@ -1232,6 +1237,7 @@ html.nocur,html.nocur *{cursor:none!important}
           <div class="row" style="gap:10px">
             <button class="btn sm" id="cCheck">Scan my next move</button>
             <button class="btn sm" id="cStuck">I'm stuck</button>
+            <button class="btn sm" id="cRate"></button>
           </div>
           <div id="cNote"></div>
         </div>
@@ -3408,7 +3414,7 @@ function startGame(lvId,colChoice,preId,coach=false,tc="none"){
     `You're <b>${hero==="w"?"White":"Black"}</b>${lv.adaptive?` against <b>${lv.name.toLowerCase()}</b>, now ${LEVELS.find(l=>l.id===LADDER[lv.ladderIdx]).name} ~${lv.elo}`:""}. `+
     (coach ? `Dr. Brainscan is in: blunders get stopped before they land, and you can ask for a move scan or a hint any time.`
            : `No help until it's over — then I analyse the whole thing.`);
-  G.coach=coach; G.cc=null; G.pm=null;
+  G.coach=coach; G.cc=null; G.pm=null; G.badge=null; G.carry="";
   $("#coachBox").style.display=coach?"block":"none"; $("#cNote").innerHTML="";
   const T=TCS.find(t=>t.id===tc);
   G.clock=T&&T.base?{w:T.base*1000,b:T.base*1000,inc:T.inc*1000,run:null,since:0,label:T.name}:null;
@@ -3473,6 +3479,14 @@ function flagged(c){
     :mine?"You ran out of time.":"They ran out of time. You win.";
   gameEnded();
 }
+// The rating icon sits on the piece you moved for as long as it stays there.
+function drawBadge(){
+  const b=$("#gBoard"); b.querySelectorAll(".rbadge").forEach(x=>x.remove());
+  if(!G||!G.coach||!G.badge||!ratingsOn())return;
+  const p=G.ch.get(G.badge.sq); if(!p||p.color!==G.hero)return;
+  const sq=b.querySelector(`.sq[data-sq="${G.badge.sq}"]`), R=RATES[G.badge.k]; if(!sq||!R)return;
+  sq.insertAdjacentHTML("beforeend",`<span class="rbadge" style="background:${R.c}" title="${R.w}">${R.i}</span>`);
+}
 function drawGame(marks={}){
   const base={};
   if(G.lastMove){ base[G.lastMove.from]="lmf"; base[G.lastMove.to]="lmt"; }
@@ -3480,6 +3494,7 @@ function drawGame(marks={}){
   if(cc&&cc.marks)Object.assign(base,cc.marks);
   if(G.pm){ base[G.pm.from]="premv"; base[G.pm.to]="premv"; }
   renderBoard($("#gBoard"),G.ch.fen(),G.hero==="b",Object.assign(base,marks),cc&&cc.arrows?cc.arrows:null);
+  drawBadge();
   const h=G.ch.history(); let s="";
   for(let i=0;i<h.length;i+=2) s+=`${i/2+1}. ${h[i]||""} ${h[i+1]||""}  `;
   $("#moveList").textContent=s||"—";
@@ -3660,6 +3675,34 @@ function grade(drop,top){
   if(drop<25)return {w:"Mistake",cls:"bad"};
   return {w:"Blunder",cls:"bad"};
 }
+// Move ratings, the way chess.com's coaches label each move: an icon on the
+// piece and a line in the panel. Graded on win chance lost, with a floor for
+// engine noise: a move that costs under ~40cp (or under ~80cp in the first few
+// moves, where the engine's preferences between sound openings mean little)
+// can't be worse than Good.
+const RATES={
+  best:{w:"Best",i:"★",c:"#81b64c",say:n=>`${n} is the best move.`},
+  exc: {w:"Excellent",i:"!",c:"#96bc4b",say:n=>`${n} is excellent.`},
+  good:{w:"Good",i:"✓",c:"#95af8a",say:n=>`${n} is a good move.`},
+  inac:{w:"Inaccuracy",i:"?!",c:"#f7c045",say:n=>`${n} is an inaccuracy.`},
+  mist:{w:"Mistake",i:"?",c:"#e58f2a",say:n=>`${n} is a mistake.`},
+  blun:{w:"Blunder",i:"??",c:"#ca3431",say:n=>`${n} is a blunder.`},
+};
+function rateMove(drop,top,cpLoss,ply){
+  if(top)return "best";
+  const noise=cpLoss<40||(ply<=8&&cpLoss<80);
+  if(drop<2)return "exc";
+  if(drop<5||noise)return "good";
+  if(drop<10)return "inac";
+  if(drop<20)return "mist";
+  return "blun";
+}
+const ratingsOn=()=>DB.coachRate!==false;
+function rateLine(k,san,best){
+  const R=RATES[k];
+  return `<span class="rchip" style="background:${R.c}">${R.i}</span> ${R.say(`<b>${esc(san)}</b>`)}`+
+    ((k==="inac"||k==="mist"||k==="blun")&&best?` Better was ${best}.`:"");
+}
 async function coachAfterHuman(m,prevLast){
   const cc=G.cc, id=G.id, armed=cc.armed;
   cc.pending={m,prevLast};
@@ -3685,17 +3728,17 @@ async function coachAfterHuman(m,prevLast){
   if(r2&&!tactical){ try{ const tt=new Chess(after), mv=tt.move({from:r2.best.slice(0,2),to:r2.best.slice(2,4),promotion:r2.best[4]||'q'});
     tactical=!!mv&&(!!mv.captured||tt.in_check()); }catch(e){} }
   const best=pre.best&&!top?describeReply(cc.fen,pre.best,"their"):null;
+  const rk=rateMove(drop,top,Math.max(0,eb-ea),G.ch.history().length);
+  G.badge={sq:m.to,k:rk};
   if(!armed&&(drop<THRESH||(!tactical&&drop<25))){
     cc.pending=null;
-    G.carry = top ? `Dr. Brainscan approves: <b>${esc(m.san)}</b> was the engine's choice too.`
-            // A quiet move only earns a comment when it really costs something:
-            // the engine's taste between two good openings (d4 vs e4) is noise,
-            // so the first few moves and anything under ~60cp go unremarked.
-            : (drop>=5&&eb-ea>=60&&G.ch.history().length>6) ? `<b>${esc(m.san)}</b> was ${gr.w==="Inaccuracy"?"an inaccuracy":"a mistake"}. ${best?`Better was ${best}.`:""}`
-            : "";
+    G.carry = ratingsOn() ? rateLine(rk,m.san,best) : "";
+    $("#cNote").innerHTML=G.carry?`<div class="revstat" style="padding:8px 0">${G.carry}</div>`:"";
+    drawGame();
     $("#gStatus").textContent="thinking…"; maybeEngine(); return;
   }
-  $("#cNote").innerHTML=`<div class="fb ${gr.cls}"><div class="hd">${armed?"":"Hold on! "}${esc(m.san)}: ${gr.w}</div>
+  drawGame();
+  $("#cNote").innerHTML=`<div class="fb ${gr.cls}"><div class="hd">${armed?"":"Hold on! "}${esc(m.san)}: ${RATES[rk].w}</div>
     ${!armed?"That move gives a lot away. ":""}${why}
     ${drop>=THRESH&&tactical?`<div style="margin-top:8px;color:var(--muted)">Before you move, look at every check and capture they'd have after it.</div>`:""}
     <div class="row" style="gap:10px;margin-top:14px">
@@ -3717,7 +3760,7 @@ function coachUndo(cc){
   G.ch.undo(); G.times.pop();
   if(G.clock&&G.clock.lastInc===G.hero){ G.clock[G.hero]-=G.clock.inc; G.clock.lastInc=null; }   // no increment for a move you took back
   clockGo(G.hero);
-  G.lastMove=cc.pending.prevLast; cc.pending=null; cc.armed=false;
+  G.lastMove=cc.pending.prevLast; cc.pending=null; cc.armed=false; G.badge=null;
   $("#cCheck").textContent="Scan my next move"; $("#cCheck").classList.remove("pri");
   $("#lastMv").innerHTML=`<span class="q">took it back — your move</span>`;
   $("#gStatus").textContent="your move"; G.t0=Date.now();
@@ -3726,6 +3769,13 @@ function coachUndo(cc){
   $("#cNote").innerHTML=keepArrow?`<div class="revstat" style="padding:8px 0">The blue arrow is the engine's move. Play it or find your own.</div>`:"";
   drawGame();
 }
+function rateBtn(){ $("#cRate").textContent="Move ratings: "+(ratingsOn()?"on":"off"); }
+rateBtn();
+$("#cRate").onclick=()=>{
+  DB.coachRate=!ratingsOn(); save(); rateBtn();
+  if(!ratingsOn()){ G&&(G.carry=""); const n=$("#cNote"); if(n&&n.querySelector(".rchip"))n.innerHTML=""; }
+  if(G&&G.coach)drawGame();
+};
 $("#cCheck").onclick=()=>{
   if(!G||!G.coach||G.over||!G.cc||G.cc.pending||G.ch.turn()!==G.hero)return;
   const cc=G.cc; cc.armed=!cc.armed;
@@ -3809,7 +3859,7 @@ $("#resign").onclick=()=>{ if(!G||G.over)return; G.over=true; G.result="loss"; c
 $("#takeback").onclick=()=>{ if(!G||G.over)return;
   if(G.ch.turn()!==G.hero||(G.cc&&G.cc.pending))return;   // only between your moves
   if(G.ch.history().length<2)return;            // nothing of yours to take back yet
-  G.ch.undo(); G.ch.undo(); gSel=null; G.pm=null; G.lastMove=null;
+  G.ch.undo(); G.ch.undo(); gSel=null; G.pm=null; G.badge=null; G.lastMove=null;
   $("#lastMv").innerHTML=`<span class="q">took back — your move</span>`; coachPrep(); drawGame(); };
 $("#newGame").onclick=()=>{ if(G)G.over=true; clearInterval(G&&G.tick);
   $("#gameUI").style.display="none"; $("#setup").style.display="block"; boardFocus("play",false); };
