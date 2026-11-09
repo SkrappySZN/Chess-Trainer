@@ -870,18 +870,18 @@ html.nocur,html.nocur *{cursor:none!important}
 @media(min-width:561px) and (max-width:1000px){
   :is(#v-train,#v-play,#v-open,#v-puz,#v-vision).focus .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 118px)),940px)}
 }
-/* A game in progress: the whole board, its clock and its buttons fit on one
-   screen, and on a wide screen the board sits in the middle of it with the
-   game panel to its right, like chess.com, instead of the pair being centred
-   as one block (which pushed the board left). */
+/* A game in progress: the board is as big as the screen allows while the clock,
+   buttons and game panel all stay on screen without scrolling. The dark card
+   hugs the board and panel instead of stretching across the page, so there's
+   no empty black block beside the board. */
 @media(min-width:1001px){
-  #v-play.focus #gameUI .play{min-height:calc(100svh - var(--hdr) - 64px);align-items:center}
-  #v-play.focus .play>div:first-child{width:clamp(300px,min(calc(100svh - var(--hdr) - 210px),60vw),900px)}
-}
-@media(min-width:1280px){
-  #v-play.focus #gameUI .play{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:36px;align-items:start;align-content:center}
-  #v-play.focus #gameUI .play>div:first-child{grid-column:2}
-  #v-play.focus #gameUI .play>div:last-child{grid-column:3;max-width:440px;width:auto}
+  .main:has(#v-play.focus.on){padding-top:12px;padding-bottom:12px}
+  #v-play.focus{width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;padding:0 24px 16px}
+  #v-play.focus #gameUI .play{justify-content:center;align-items:flex-start;gap:32px}
+  #v-play.focus #gameUI .qbar{margin-bottom:8px;min-height:42px}
+  #v-play.focus #gameUI .play>div:first-child>.row{margin-top:12px!important}
+  #v-play.focus .play>div:first-child{width:clamp(300px,min(calc(100svh - var(--hdr) - 168px),calc(100vw - 520px)),1000px)}
+  #v-play.focus .play>div:last-child{flex:0 0 380px;width:380px;max-width:380px;padding-top:50px}
 }
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
 /* board vision */
