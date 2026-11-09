@@ -1158,11 +1158,16 @@ html.nocur,html.nocur *{cursor:none!important}
 
 <!-- ================= PLAY ================= -->
 <div class="view" id="v-play">
-  <header class="vhead sm"><div><div class="eyebrow">No hints until it's over</div><h1>Play<i>.</i></h1></div></header>
+  <header class="vhead sm"><div><div class="eyebrow">Play a bot, with or without a coach</div><h1>Play<i>.</i></h1></div></header>
   <div id="setup" class="card" style="box-shadow:var(--sh-2)">
-    <p style="font-size:15px;max-width:62ch">No hints, no eval bar. When it's over the whole game gets analysed and
+    <p style="font-size:15px;max-width:62ch">When it's over the whole game gets analysed and
     anything you missed turns into drills on the Train tab.</p>
     <div class="sect" style="margin-top:22px">
+      <h2>Coach</h2>
+      <div class="row" id="coachOpts" style="gap:12px"></div>
+      <div class="colnote" id="coachNote" style="color:var(--muted)"></div>
+    </div>
+    <div class="sect" style="margin-top:24px">
       <h2>Opponent</h2>
       <div class="row" id="levels" style="gap:12px"></div>
       <div class="colnote" id="eraNote" style="color:var(--muted)"></div>
@@ -1197,6 +1202,13 @@ html.nocur,html.nocur *{cursor:none!important}
         <h3 id="gTitle" style="font-size:28px;letter-spacing:-.025em">Game in progress</h3>
         <p class="lastmv" id="lastMv"></p>
         <p id="gSub" style="font-size:15px"></p>
+        <div id="coachBox" style="display:none;margin:0 0 16px">
+          <div class="row" style="gap:10px">
+            <button class="btn sm" id="cCheck">Check my next move</button>
+            <button class="btn sm" id="cStuck">I'm stuck</button>
+          </div>
+          <div id="cNote"></div>
+        </div>
         <div class="mono" id="moveList" data-lenis-prevent style="max-height:220px;overflow:auto;line-height:1.9"></div>
         <div id="gReview"></div>
       </div>
@@ -1471,7 +1483,8 @@ const isBotGame=g=>!!g&&(g.cls==="vs bot"||g.cls==="cc bot");
 // chess.com's bots offer hints, and a game played off the hint button measures
 // the engine, not you. You can flag one yourself; until you do, a game whose
 // moves match the engine far more often than yours usually do is treated as one.
-const hintGame=g=>!!g&&g.cls==="cc bot"&&(g.assisted!=null?g.assisted:!!g.hintLike);
+// Games played with our own coach switched on are hint games by definition.
+const hintGame=g=>!!g&&(g.coached===true||(g.cls==="cc bot"&&(g.assisted!=null?g.assisted:!!g.hintLike)));
 // Drills built from coaching games before they were excluded are still sitting
 // in the queue. Drop them once, on load and on import.
 function dropCoachDrills(){
@@ -3059,9 +3072,45 @@ const LEVELS=[
 // new one appeared
 const eraId=(key)=>2000000+(+String(key).slice(0,4));
 // each year you played enough becomes a playable version of you from back then
+// Adaptive: one of the rated levels above, chosen by your results. It starts at
+// the level nearest your current rapid rating, steps up after a win and down
+// after a loss, so the games stay hard enough to teach you something.
+const ADAPT_ID=9, LADDER=[5,0,1,6,2,7,8];
+function myRating(){
+  const gs=realGames().filter(g=>(g.cls==="rapid"||g.cls==="blitz")&&g.rated!==false&&g.end)
+                      .sort((a,b)=>b.end-a.end);
+  for(const g of gs){ const r=g.isWhite?g.wr:g.br; if(r)return r; }
+  return null;
+}
+function adaptIdx(){
+  if(Number.isInteger(DB.adaptIdx)&&DB.adaptIdx>=0&&DB.adaptIdx<LADDER.length)return DB.adaptIdx;
+  const r=myRating();
+  if(!r)return 1;
+  let best=0,gap=Infinity;
+  LADDER.forEach((id,i)=>{ const d=Math.abs(LEVELS.find(l=>l.id===id).elo-r); if(d<gap){gap=d;best=i} });
+  return best;
+}
+function adaptiveLevel(){
+  const i=adaptIdx(), base=LEVELS.find(l=>l.id===LADDER[i]);
+  return {...base,id:ADAPT_ID,adaptive:true,ladderIdx:i,name:"Adaptive",
+    note:`now ${base.name} ~${base.elo} · up a level when you win, down when you lose`};
+}
+// Returns a sentence for the end-of-game screen, or "" when nothing moved.
+function adaptAfter(lv,result){
+  if(!lv||!lv.adaptive)return "";
+  const i=lv.ladderIdx;
+  const j=result==="win"?Math.min(LADDER.length-1,i+1):result==="loss"?Math.max(0,i-1):i;
+  DB.adaptIdx=j; save();
+  const nm=LEVELS.find(l=>l.id===LADDER[j]);
+  if(j>i)return `Adaptive steps up: next game is ${nm.name} (~${nm.elo}).`;
+  if(j<i)return `Adaptive steps down: next game is ${nm.name} (~${nm.elo}).`;
+  return result==="win"?`You beat the top level. Adaptive stays at ${nm.name}.`
+       : result==="loss"?`Adaptive is already at its easiest level.`
+       : `A draw. Adaptive stays at ${nm.name} (~${nm.elo}).`;
+}
 function allLevels(){
   const now=new Date().getFullYear();
-  return LEVELS.concat(eras().map(c=>({
+  return [adaptiveLevel()].concat(LEVELS).concat(eras().map(c=>({
     id:eraId(c.key), capsule:c, mirror:true, depth:8,
     name:"You · "+c.label,
     note:`${c.games} games${c.rating?` · rated ~${c.rating}`:""} · ${c.acpl} acpl`+
@@ -3222,7 +3271,10 @@ function buildSetup(){
   }
   $("#colors").innerHTML=[["w","White"],["b","Black"],["r","Random"]].map(([k,n],i)=>`<button class="btn opt" data-k="col" data-i="${k}">${n}</button>`).join("");
   $("#presets").innerHTML=PRESETS.map(p=>`<button class="btn opt" data-k="pre" data-i="${p.id}">${p.name}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${p.note}</small></button>`).join("");
-  const sel={lv:DB.playLv??0,col:DB.playCol??"w",pre:DB.playPre??"full"};
+  $("#coachOpts").innerHTML=[["0","Off","no hints until it's over"],["1","On","check moves, hints, blunder warnings"]]
+    .map(([k,n,s])=>`<button class="btn opt" data-k="coach" data-i="${k}">${n}<small style="display:block;font-size:11px;color:var(--muted);font-weight:500">${s}</small></button>`).join("");
+  $("#coachNote").textContent="Coached games still make drills, but they're left out of your stats.";
+  const sel={lv:DB.playLv??0,col:DB.playCol??"w",pre:DB.playPre??"full",coach:DB.playCoach?"1":"0"};
   const mark=()=>{
     $$(".opt").forEach(b=>b.classList.toggle("on",String(sel[b.dataset.k])===String(b.dataset.i)));
     // mate drills hand you the extra material, so the colour choice is ignored — show that
@@ -3231,11 +3283,11 @@ function buildSetup(){
     const n=$("#colnote"); if(n)n.textContent=forced?"this drill always starts you as White":"";
   };
   $$(".opt").forEach(b=>b.onclick=()=>{sel[b.dataset.k]=b.dataset.i;mark();
-    DB.playLv=+sel.lv;DB.playCol=sel.col;DB.playPre=sel.pre;save();});
+    DB.playLv=+sel.lv;DB.playCol=sel.col;DB.playPre=sel.pre;DB.playCoach=sel.coach==="1";save();});
   mark();
-  $("#startGame").onclick=()=>startGame(+sel.lv, sel.col, sel.pre);
+  $("#startGame").onclick=()=>startGame(+sel.lv, sel.col, sel.pre, sel.coach==="1");
 }
-function startGame(lvId,colChoice,preId){
+function startGame(lvId,colChoice,preId,coach=false){
   const lv=levelById(lvId), pre=PRESETS.find(p=>p.id===preId)||PRESETS[0];
   let hero = colChoice==="r" ? (Math.random()<.5?"w":"b") : colChoice;
   if(pre.fen) hero="w";                       // mate drills always give you the material
@@ -3249,19 +3301,25 @@ function startGame(lvId,colChoice,preId){
   $("#gTimer").textContent="0s"; $("#gTimer").className="timer";
   const flipped = colChoice==="r" && !pre.fen;
   $("#gSub").innerHTML=`${flipped?`<b class="coin">Random gave you ${hero==="w"?"White":"Black"}.</b> `:""}`+
-    `You're <b>${hero==="w"?"White":"Black"}</b>. No help until it's over — then I analyse the whole thing.`;
+    `You're <b>${hero==="w"?"White":"Black"}</b>${lv.adaptive?` against <b>${lv.name.toLowerCase()}</b>, now ${LEVELS.find(l=>l.id===LADDER[lv.ladderIdx]).name} ~${lv.elo}`:""}. `+
+    (coach ? `The coach is on: it warns you before a blunder lands, and you can check a move or ask for a hint.`
+           : `No help until it's over — then I analyse the whole thing.`);
+  G.coach=coach; G.cc=null;
+  $("#coachBox").style.display=coach?"block":"none"; $("#cNote").innerHTML="";
   if(flipped){ DB.flips=DB.flips||{w:0,b:0}; DB.flips[hero]++; save(); }
   clearInterval(G.tick);
   G.tick=setInterval(()=>{ if(!G||G.over)return;
     const s=Math.round((Date.now()-G.t0)/1000), el=$("#gTimer");
     if(G.ch.turn()===G.hero){el.textContent=s+"s"; el.className="timer"+(s>=30?" alarm":"");}
   },250);
-  drawGame(); maybeEngine();
+  drawGame(); maybeEngine(); coachPrep();
 }
 function drawGame(marks={}){
   const base={};
   if(G.lastMove){ base[G.lastMove.from]="lmf"; base[G.lastMove.to]="lmt"; }
-  renderBoard($("#gBoard"),G.ch.fen(),G.hero==="b",Object.assign(base,marks));
+  const cc=G.cc&&G.cc.fen===G.ch.fen()?G.cc:null;     // hints only belong to the position they were made for
+  if(cc&&cc.marks)Object.assign(base,cc.marks);
+  renderBoard($("#gBoard"),G.ch.fen(),G.hero==="b",Object.assign(base,marks),cc&&cc.arrows?cc.arrows:null);
   const h=G.ch.history(); let s="";
   for(let i=0;i<h.length;i+=2) s+=`${i/2+1}. ${h[i]||""} ${h[i+1]||""}  `;
   $("#moveList").textContent=s||"—";
@@ -3308,9 +3366,11 @@ async function playHuman(from,to){
   const m=G.ch.move({from,to,promotion:promo});
   if(!m)return;
   FX.move(m.captured);
+  const prevLast=G.lastMove;
   G.lastMove={from,to,san:m?m.san:"",by:"you"};
   $("#lastMv").innerHTML=`<span class="q">you played</span> <b>${m?m.san:""}</b>`;
   drawGame(); if(checkOver())return;
+  if(G.coach&&G.cc){ coachAfterHuman(m,prevLast); return; }
   $("#gStatus").textContent="thinking…"; maybeEngine();
 }
 const MIN_THINK=900;   // never reply instantly — you can't read a move that appears in 0ms
@@ -3337,8 +3397,173 @@ async function maybeEngine(){
   $("#lastMv").innerHTML=`<span class="q">they played</span> <b>${mv.san}</b>${what}`;
   drawGame(); G.t0=Date.now();
   $("#gStatus").textContent="your move";
-  checkOver();
+  if(!checkOver())coachPrep();
 }
+
+/* ---------- coach ----------
+   Everything the coach says comes from the same engine the bot uses, plus a few
+   plain rules for putting a line into words. It analyses each position as soon
+   as it's your move, so a check or a hint is usually ready by the time you ask.
+   Three things it does:
+   - "Check my next move": your move is played on the board but the bot waits.
+     You get a verdict and their best reply, then keep it or take it back.
+   - "I'm stuck": hints in steps. First what's attacking you and what's
+     forcing for you, then which piece to look at, then the move itself.
+   - A move that throws the game away (THRESH win% or more) is caught before the
+     bot answers, with the reason, and you choose whether to keep it. */
+const COACH_DEPTH=DEPTH;
+function coachPrep(){
+  if(!G||!G.coach||G.over||G.ch.turn()!==G.hero)return;
+  const fen=G.ch.fen(), id=G.id;
+  G.cc={fen,id,armed:false,hint:0,marks:null,arrows:null,pending:null,
+        pre:analyse(fen,COACH_DEPTH,PRIO.LIVE),threat:null};
+  $("#cCheck").textContent="Check my next move"; $("#cCheck").classList.remove("pri");
+  $("#cNote").innerHTML=G.carry?`<div class="revstat" style="padding:8px 0">${G.carry}</div>`:"";
+  G.carry="";
+}
+const sqWord=(c)=>({p:"pawn",n:"knight",b:"bishop",r:"rook",q:"queen",k:"king"})[c];
+// Put a move into words: "Bxc5, taking your knight on c5, with check". `whose`
+// is who owns the captured piece from your point of view: "your" for their moves.
+function describeReply(fen,uci,whose="your"){
+  try{
+    const t=new Chess(fen), mv=t.move({from:uci.slice(0,2),to:uci.slice(2,4),promotion:uci[4]||'q'});
+    if(!mv)return null;
+    let s=`<b>${esc(mv.san)}</b>`;
+    if(t.in_checkmate())return s+", which is checkmate";
+    if(mv.captured)s+=`, taking ${whose} ${sqWord(mv.captured)} on ${mv.to}`;
+    if(t.in_check())s+=mv.captured?", with check":" with check";
+    return s;
+  }catch(e){ return null }
+}
+function sanLine(fen,pv,n){
+  try{ const t=new Chess(fen), out=[];
+    for(const u of pv.slice(0,n)){ const m=t.move({from:u.slice(0,2),to:u.slice(2,4),promotion:u[4]||'q'}); if(!m)break; out.push(m.san); }
+    return out.join(" ");
+  }catch(e){ return "" }
+}
+// Grade a move by how much win chance it gave away.
+function grade(drop,top){
+  if(top||drop<2)return {w:"Best move",cls:"ok"};
+  if(drop<5)return {w:"Good move",cls:"ok"};
+  if(drop<THRESH/1.5)return {w:"Inaccuracy",cls:""};
+  if(drop<25)return {w:"Mistake",cls:"bad"};
+  return {w:"Blunder",cls:"bad"};
+}
+async function coachAfterHuman(m,prevLast){
+  const cc=G.cc, id=G.id, armed=cc.armed;
+  cc.pending={m,prevLast};
+  $("#gStatus").textContent="coach is looking…";
+  $("#cNote").innerHTML=`<div class="fb"><div class="hd">Checking ${esc(m.san)}…</div>Looking at what this move allows.</div>`;
+  const pre=await cc.pre;
+  const after=G.ch.fen();
+  const r2=G.ch.game_over()?null:await analyse(after,COACH_DEPTH,PRIO.LIVE);
+  if(!liveGame(id)||G.cc!==cc)return;
+  const eb=toCp(pre), ea=r2?-toCp(r2):0;
+  const drop=Math.max(0,winPct(eb)-winPct(ea));
+  const top=(m.from+m.to)===pre.best.slice(0,4);
+  const gr=grade(drop,top);
+  const reply=r2?describeReply(after,r2.best):null;
+  let why="";
+  if(r2&&r2.mate!=null&&r2.mate>0)why=`It lets them force checkmate in ${r2.mate}${reply?`, starting with ${reply}`:""}.`;
+  else if(reply&&drop>=THRESH)why=`Their best answer is ${reply}.`;
+  else if(reply)why=`Expect ${reply}.`;
+  // Only a tactical loss stops the game: their reply takes something, gives
+  // check or mates. A positional slip gets a quiet note after their move instead,
+  // because "look at their checks and captures" is the wrong lesson for it.
+  let tactical=!!(r2&&r2.mate!=null&&r2.mate>0);
+  if(r2&&!tactical){ try{ const tt=new Chess(after), mv=tt.move({from:r2.best.slice(0,2),to:r2.best.slice(2,4),promotion:r2.best[4]||'q'});
+    tactical=!!mv&&(!!mv.captured||tt.in_check()); }catch(e){} }
+  const best=pre.best&&!top?describeReply(cc.fen,pre.best,"their"):null;
+  if(!armed&&(drop<THRESH||(!tactical&&drop<25))){
+    cc.pending=null;
+    G.carry = top ? `<b>${esc(m.san)}</b> was the engine's choice too.`
+            : drop>=5 ? `<b>${esc(m.san)}</b> was ${gr.w==="Inaccuracy"?"an inaccuracy":"a mistake"}. ${best?`Better was ${best}.`:""}`
+            : "";
+    $("#gStatus").textContent="thinking…"; maybeEngine(); return;
+  }
+  $("#cNote").innerHTML=`<div class="fb ${gr.cls}"><div class="hd">${armed?"":"Hold on. "}${esc(m.san)}: ${gr.w}</div>
+    ${!armed?"That move gives a lot away. ":""}${why}
+    ${drop>=THRESH&&tactical?`<div style="margin-top:8px;color:var(--muted)">Before you move, look at every check and capture they'd have after it.</div>`:""}
+    <div class="row" style="gap:10px;margin-top:14px">
+      <button class="btn sm${drop>=THRESH?"":" pri"}" id="cKeep">${armed?"Play it":"Play on anyway"}</button>
+      <button class="btn sm${drop>=THRESH?" pri":""}" id="cBack">Take it back</button>
+      ${best?`<button class="btn sm" id="cBest">Show the better move</button>`:""}
+    </div><div id="cBestOut"></div></div>`;
+  $("#gStatus").textContent="your call";
+  $("#cKeep").onclick=()=>{ if(!liveGame(id)||G.cc!==cc)return; cc.pending=null; cc.armed=false;
+    $("#cNote").innerHTML=""; $("#gStatus").textContent="thinking…"; maybeEngine(); };
+  $("#cBack").onclick=()=>coachUndo(cc);
+  if(best)$("#cBest").onclick=()=>{
+    $("#cBestOut").innerHTML=`<div style="margin-top:10px">Better was ${best}. Line: <span class="mono">${esc(sanLine(cc.fen,pre.pv||[pre.best],5))}</span></div>`;
+    cc.arrows=[{from:pre.best.slice(0,2),to:pre.best.slice(2,4),color:DRAWC.alt}];
+  };
+}
+function coachUndo(cc){
+  if(!G||G.over||G.cc!==cc||!cc.pending)return;
+  G.ch.undo(); G.times.pop();
+  G.lastMove=cc.pending.prevLast; cc.pending=null; cc.armed=false;
+  $("#cCheck").textContent="Check my next move"; $("#cCheck").classList.remove("pri");
+  $("#lastMv").innerHTML=`<span class="q">took it back — your move</span>`;
+  $("#gStatus").textContent="your move"; G.t0=Date.now();
+  // keep the "better move" arrow if they asked for it, drop the rest of the panel
+  const keepArrow=!!cc.arrows;
+  $("#cNote").innerHTML=keepArrow?`<div class="revstat" style="padding:8px 0">The blue arrow is the engine's move. Play it or find your own.</div>`:"";
+  drawGame();
+}
+$("#cCheck").onclick=()=>{
+  if(!G||!G.coach||G.over||!G.cc||G.cc.pending||G.ch.turn()!==G.hero)return;
+  const cc=G.cc; cc.armed=!cc.armed;
+  $("#cCheck").textContent=cc.armed?"Checking: make your move":"Check my next move";
+  $("#cCheck").classList.toggle("pri",cc.armed);
+};
+$("#cStuck").onclick=async()=>{
+  if(!G||!G.coach||G.over||!G.cc||G.cc.pending||G.ch.turn()!==G.hero)return;
+  const cc=G.cc, id=G.id, fen=cc.fen;
+  cc.hint=Math.min(3,cc.hint+1);
+  const out=$("#cNote");
+  if(cc.hint===1){
+    out.innerHTML=`<div class="fb"><div class="hd">Hint 1 of 3</div>Looking at threats…</div>`;
+    const t=new Chess(fen), mine=t.moves({verbose:true});
+    const checks=mine.filter(m=>/[+#]/.test(m.san)).map(m=>m.san);
+    const caps=mine.filter(m=>m.captured&&!/[+#]/.test(m.san)).map(m=>m.san);
+    // What would they do if it were their move? That's the threat.
+    let threat="";
+    if(!t.in_check()){
+      const nf=setTurn(fen,G.hero==="w"?"b":"w");
+      const [pre,rn]=await Promise.all([cc.pre,analyse(nf,COACH_DEPTH,PRIO.LIVE)]);
+      if(!liveGame(id)||G.cc!==cc)return;
+      const gain=toCp(rn)+toCp(pre);            // their eval if they moved twice, vs now
+      // A free move is worth something to anyone, so a quiet "threat" is usually
+      // just a good developing move. Only name it when it's forcing.
+      let forcing=false;
+      try{ const tt=new Chess(nf), mv=tt.move({from:rn.best.slice(0,2),to:rn.best.slice(2,4),promotion:rn.best[4]||'q'});
+           forcing=!!mv&&(!!mv.captured||tt.in_check()); }catch(e){}
+      if(rn.mate!=null&&rn.mate>0&&rn.mate<=3)forcing=true;
+      if(forcing&&gain>=150){ const d=describeReply(nf,rn.best);
+        if(d)threat=rn.mate!=null&&rn.mate>0?`They're threatening checkmate, starting with ${d}. Stop that first.`
+                                            :`They're threatening ${d}. Deal with that first, or find something even stronger.`; }
+    } else threat="You're in check, so that comes first.";
+    const list=(a)=>a.length?a.slice(0,10).map(esc).join(", ")+(a.length>10?"…":""):"none";
+    out.innerHTML=`<div class="fb"><div class="hd">Hint 1 of 3</div>
+      ${threat||"Nothing of yours is under real threat right now."}
+      <div style="margin-top:8px">Your checks: <span class="mono">${list(checks)}</span><br>Your captures: <span class="mono">${list(caps)}</span></div>
+      <div style="margin-top:8px;color:var(--muted)">Press again for which piece to look at.</div></div>`;
+    return;
+  }
+  const pre=await cc.pre;
+  if(!liveGame(id)||G.cc!==cc)return;
+  const from=pre.best.slice(0,2), pc=new Chess(fen).get(from);
+  cc.marks={[from]:"hint"};
+  if(cc.hint===2){
+    out.innerHTML=`<div class="fb"><div class="hd">Hint 2 of 3</div>Look at your <b>${sqWord(pc.type)}</b> on ${from} (highlighted). Where can it go, and what does it hit there?
+      <div style="margin-top:8px;color:var(--muted)">Press again to see the move.</div></div>`;
+  } else {
+    cc.arrows=[{from,to:pre.best.slice(2,4),color:DRAWC.alt}];
+    out.innerHTML=`<div class="fb"><div class="hd">Hint 3 of 3</div>The engine plays ${describeReply(fen,pre.best,"their")||esc(pre.best)}.
+      <div style="margin-top:8px">Line: <span class="mono">${esc(sanLine(fen,pre.pv||[pre.best],5))}</span></div></div>`;
+  }
+  drawGame();
+};
 function checkOver(){
   if(!G.ch.game_over())return false;
   G.over=true; clearInterval(G.tick);
@@ -3351,15 +3576,23 @@ function checkOver(){
   else if(G.ch.in_draw()) what="Draw (50-move rule).";
   $("#gStatus").textContent="finished";
   $("#gTitle").textContent=what;
-  reviewGame();
+  gameEnded();
   return true;
 }
+// Shared end of game: the coach goes quiet, Adaptive moves, the review runs.
+function gameEnded(){
+  $("#coachBox").style.display="none";
+  const msg=adaptAfter(G.lv,G.result);
+  if(msg)$("#gSub").innerHTML=`<b>${esc(msg)}</b>`;
+  reviewGame();
+}
 $("#resign").onclick=()=>{ if(!G||G.over)return; G.over=true; G.result="loss"; clearInterval(G.tick);
-  $("#gTitle").textContent="Resigned."; $("#gStatus").textContent="finished"; reviewGame(); };
+  $("#gTitle").textContent="Resigned."; $("#gStatus").textContent="finished"; gameEnded(); };
 $("#takeback").onclick=()=>{ if(!G||G.over)return;
-  if(G.ch.turn()!==G.hero)return;               // only between your moves
+  if(G.ch.turn()!==G.hero||(G.cc&&G.cc.pending))return;   // only between your moves
+  if(G.ch.history().length<2)return;            // nothing of yours to take back yet
   G.ch.undo(); G.ch.undo(); gSel=null; G.lastMove=null;
-  $("#lastMv").innerHTML=`<span class="q">took back — your move</span>`; drawGame(); };
+  $("#lastMv").innerHTML=`<span class="q">took back — your move</span>`; coachPrep(); drawGame(); };
 $("#newGame").onclick=()=>{ if(G)G.over=true; clearInterval(G&&G.tick);
   $("#gameUI").style.display="none"; $("#setup").style.display="block"; boardFocus("play",false); };
 
@@ -3412,7 +3645,8 @@ async function reviewGame(){
   const me=DB.user||"You";
   DB.games[url]={url,white:hero==="w"?me:g0.lv.name,black:hero==="w"?g0.lv.name:me,
     wr:0,br:0,end:Math.floor(Date.now()/1000),isWhite:hero==="w",
-    moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:g0.result||"",how:g0.result||""};
+    moves:mine,errs:drills.length,drills,cls:"vs bot",mlog,result:g0.result||"",how:g0.result||"",
+    coached:!!g0.coach};
   g0.mlog=mlog;
   DB.drills=DB.drills.concat(drills); REPORTS.clear(); LEAKCACHE.clear(); COACHCACHE.clear(); save(); renderProgress(); renderGames();
   const med=g0.times.length?g0.times.slice().sort((a,b)=>a-b)[Math.floor(g0.times.length/2)]:0;
