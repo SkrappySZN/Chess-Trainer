@@ -870,6 +870,19 @@ html.nocur,html.nocur *{cursor:none!important}
 @media(min-width:561px) and (max-width:1000px){
   :is(#v-train,#v-play,#v-open,#v-puz,#v-vision).focus .play>div:first-child{width:clamp(260px,min(96vw,calc(100svh - var(--hdr) - 118px)),940px)}
 }
+/* A game in progress: the whole board, its clock and its buttons fit on one
+   screen, and on a wide screen the board sits in the middle of it with the
+   game panel to its right, like chess.com, instead of the pair being centred
+   as one block (which pushed the board left). */
+@media(min-width:1001px){
+  #v-play.focus #gameUI .play{min-height:calc(100svh - var(--hdr) - 64px);align-items:center}
+  #v-play.focus .play>div:first-child{width:clamp(300px,min(calc(100svh - var(--hdr) - 210px),60vw),900px)}
+}
+@media(min-width:1280px){
+  #v-play.focus #gameUI .play{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:36px;align-items:start;align-content:center}
+  #v-play.focus #gameUI .play>div:first-child{grid-column:2}
+  #v-play.focus #gameUI .play>div:last-child{grid-column:3;max-width:440px;width:auto}
+}
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
 /* board vision */
 .board.nocoord .coord{display:none}
@@ -1203,11 +1216,11 @@ html.nocur,html.nocur *{cursor:none!important}
           <span class="timer" id="gTimer">0s</span>
         </div>
         <div class="board" id="gBoard"></div>
-        <div class="qbar" id="clkMeRow" style="margin:14px 0 0;justify-content:flex-end;display:none"><span class="clk" id="clkMe"></span></div>
         <div class="row" style="margin-top:22px">
           <button class="btn" id="resign">Resign</button>
           <button class="btn" id="takeback">Take back</button>
-          <button class="btn pri" id="newGame" style="margin-left:auto">New game</button>
+          <span class="clk" id="clkMe" style="margin-left:auto"></span>
+          <button class="btn pri" id="newGame">New game</button>
         </div>
       </div>
       <div>
@@ -1873,14 +1886,37 @@ function slideOne(el,mv,flip){
     const pc=el.querySelector(`.sq[data-sq="${mv.to}"] .pc`);
     if(!pc)return;
     pc.style.transition="none";
+    pc.style.willChange="transform";              // its own layer, so the slide doesn't repaint the board
     pc.style.transform=`translate(${(fx-tx)*sz}px,${(fy-ty)*sz}px)`;
     pc.style.zIndex="3";
     pc.getBoundingClientRect();                   // commit the start before animating away from it
-    pc.style.transition="transform var(--d3) var(--ease)";
+    // about chess.com's speed: long enough to see, short enough not to feel like waiting
+    pc.style.transition="transform 170ms cubic-bezier(.25,.8,.35,1)";
     pc.style.transform="";
+    pc.addEventListener("transitionend",()=>{ pc.style.willChange=""; },{once:true});
   }catch(e){}
 }
 function renderBoard(el,fen,flip,marks={},arrows=null){
+  // Same position, only the marks changed (a piece picked up, dots shown, a hint):
+  // patch the squares in place. Rebuilding 64 squares and every piece just to
+  // add move dots was the main source of lag between a click and the response,
+  // and it also swapped out the piece you were about to drag.
+  if(el.__fen===fen&&el.__flip===flip&&el.childElementCount>=64){
+    el.__marks=marks; el.__arrows=arrows;
+    for(const sq of el.children){
+      const name=sq.dataset&&sq.dataset.sq; if(!name)continue;
+      const want="sq "+(sq.classList.contains("d")?"d":"l")+(marks[name]?" "+marks[name]:"");
+      if(sq.className!==want)sq.className=want;
+      const hint=sq.querySelector(":scope>.dot,:scope>.ring");
+      const need=marks[name]==="dotm"?(sq.querySelector(":scope>.pc")?"ring":"dot"):null;
+      if(hint&&(!need||!hint.classList.contains(need)))hint.remove();
+      if(need&&!(hint&&hint.classList.contains(need))&&!sq.querySelector(":scope>."+need))
+        sq.insertAdjacentHTML("beforeend",`<span class="${need}"></span>`);
+    }
+    const old=el.querySelector(":scope>svg.arrows"); if(old)old.remove();
+    const ov=overlay(el,arrows,flip); if(ov)el.insertAdjacentHTML("beforeend",ov);
+    return;
+  }
   let slide=(el.__fen&&el.__flip===flip&&!(REDUCED&&REDUCED.matches))
     ? slideDelta(placement(el.__fen),placement(fen)) : null;
   // a piece you just dropped is already where it belongs: sliding it in again
@@ -3377,8 +3413,8 @@ function startGame(lvId,colChoice,preId,coach=false,tc="none"){
   const T=TCS.find(t=>t.id===tc);
   G.clock=T&&T.base?{w:T.base*1000,b:T.base*1000,inc:T.inc*1000,run:null,since:0,label:T.name}:null;
   $("#clkOpp").style.display=$("#clkMe").style.display=G.clock?"inline-block":"none";
-  $("#clkMeRow").style.display=G.clock?"flex":"none";
   $("#gTimer").style.display=G.clock?"none":"";
+  $("#newGame").style.marginLeft=G.clock?"":"auto";
   if(flipped){ DB.flips=DB.flips||{w:0,b:0}; DB.flips[hero]++; save(); }
   clearInterval(G.tick);
   G.tick=setInterval(()=>{ if(!G||G.over)return;
@@ -3652,7 +3688,10 @@ async function coachAfterHuman(m,prevLast){
   if(!armed&&(drop<THRESH||(!tactical&&drop<25))){
     cc.pending=null;
     G.carry = top ? `Dr. Brainscan approves: <b>${esc(m.san)}</b> was the engine's choice too.`
-            : drop>=5 ? `<b>${esc(m.san)}</b> was ${gr.w==="Inaccuracy"?"an inaccuracy":"a mistake"}. ${best?`Better was ${best}.`:""}`
+            // A quiet move only earns a comment when it really costs something:
+            // the engine's taste between two good openings (d4 vs e4) is noise,
+            // so the first few moves and anything under ~60cp go unremarked.
+            : (drop>=5&&eb-ea>=60&&G.ch.history().length>6) ? `<b>${esc(m.san)}</b> was ${gr.w==="Inaccuracy"?"an inaccuracy":"a mistake"}. ${best?`Better was ${best}.`:""}`
             : "";
     $("#gStatus").textContent="thinking…"; maybeEngine(); return;
   }
