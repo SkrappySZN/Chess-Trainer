@@ -805,15 +805,6 @@ ul.bul li{margin:7px 0}
 .ld-note{font:13px var(--mono);color:#A8A49B;max-width:28ch}
 .ld-bar{position:absolute;left:0;bottom:0;height:6px;background:var(--acc);width:0}
 @media(prefers-reduced-motion:reduce){.loader{display:none}}
-/* a ring that trails the pointer and swells over anything pressable */
-.cur{position:fixed;left:0;top:0;z-index:9998;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
- border:2px solid var(--acc);pointer-events:none;transition:width .25s var(--ease),height .25s var(--ease),margin .25s var(--ease),background .25s,opacity .2s;opacity:0}
-.cur.on{opacity:1}
-/* the ring stands in for the system cursor while a mouse is driving it */
-html.nocur,html.nocur *{cursor:none!important}
-.cur.big{width:54px;height:54px;margin:-27px 0 0 -27px;background:rgba(194,65,12,.12)}
-.cur.dot{width:8px;height:8px;margin:-4px 0 0 -4px;background:var(--acc);border-color:var(--acc)}
-.cur.down{transform-origin:center}
 /* highlighter and bars wait for the scroll position instead of playing off-screen */
 .motion .gmeter i,.motion .leak .lbar i,.motion .cond .track i,.motion .barrow .track i,.motion .caprow .track i,
 .motion .mini-prog i,.motion .tw-bar i,.motion .ex-line .bar i{animation:none}
@@ -880,12 +871,14 @@ html.nocur,html.nocur *{cursor:none!important}
    hugs the board and panel instead of stretching across the page, so there's
    no empty black block beside the board. */
 @media(min-width:1001px){
-  .main:has(#v-play.focus.on){padding-top:12px;padding-bottom:12px}
+  /* the board's width below is worked out from the whole window, so the page's
+     usual 1320px cap would leave the card narrower than board + panel */
+  .main:has(#v-play.focus.on){padding-top:12px;padding-bottom:12px;max-width:none}
   #v-play.focus{width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;padding:0 24px 16px}
   #v-play.focus #gameUI .play{justify-content:center;align-items:flex-start;gap:32px}
   #v-play.focus #gameUI .qbar{margin-bottom:8px;min-height:42px}
   #v-play.focus #gameUI .play>div:first-child>.row{margin-top:12px!important}
-  #v-play.focus .play>div:first-child{width:clamp(300px,min(calc(100svh - var(--hdr) - 168px),calc(100vw - 520px)),1000px)}
+  #v-play.focus .play>div:first-child{width:clamp(300px,min(calc(100svh - var(--hdr) - 168px),calc(100vw - 540px)),1000px);flex-shrink:1;min-width:300px}
   #v-play.focus .play>div:last-child{flex:0 0 380px;width:380px;max-width:380px;padding-top:50px}
 }
 .pzbig{font:900 clamp(72px,12vw,140px)/.9 var(--display);letter-spacing:-.06em}
@@ -6989,7 +6982,6 @@ function motionInit(){
       gsap.ticker.lagSmoothing(0);
     }catch(e){ M.lenis=null; }
   }
-  cursorInit();
   // every render lands new markup somewhere in a view; pick it up as it arrives
   let t=0;
   M.obs=new MutationObserver(()=>{ clearTimeout(t); t=setTimeout(()=>motionScan(false),30); });
@@ -7043,20 +7035,6 @@ function countUp(el){
   const end=parseFloat(el.dataset.count); if(!isFinite(end)||end===0)return;
   const dec=+(el.dataset.dec||0), suf=el.dataset.suf||"", o={v:0};
   gsap.to(o,{v:end,duration:1.2,ease:"expo.out",onUpdate:()=>{ el.textContent=(dec?o.v.toFixed(dec):Math.round(o.v).toLocaleString())+suf; }});
-}
-function cursorInit(){
-  if(!window.matchMedia||!matchMedia("(hover: hover) and (pointer: fine)").matches)return;
-  const c=document.createElement("div"); c.className="cur"; c.setAttribute("aria-hidden","true"); document.body.appendChild(c);
-  // it replaces the system cursor, so it sits exactly on the pointer rather than trailing it
-  const root=document.documentElement;
-  const show=(on)=>{ c.classList.toggle("on",on); root.classList.toggle("nocur",on); };
-  addEventListener("pointermove",e=>{ c.style.transform=`translate3d(${e.clientX}px,${e.clientY}px,0)`; show(e.pointerType==="mouse"); },{passive:true});
-  document.addEventListener("pointerleave",()=>show(false));
-  document.addEventListener("pointerover",e=>{
-    const t=e.target.closest&&e.target.closest("button,a,[role=button],input,.ghead");
-    const onBoard=!!(e.target.closest&&e.target.closest(".board,.xwrap"));
-    c.classList.toggle("dot",onBoard); c.classList.toggle("big",!!t&&!onBoard);
-  });
 }
 // What he's hitting: every square his pieces attack, darker the more of them,
 // and a ring on anything of yours he can actually win. It's check #2 of the
